@@ -26,7 +26,7 @@ async def run(theme):
         await shot('01-welcome')
         await pg.click('[data-n="Garage"]'); await pg.click('[data-n="Bad"]'); await pg.click('[data-n="Wohnzimmer"]')
         await pg.click('[data-a="createStarter"]'); await pg.wait_for_timeout(300)
-        check(await pg.locator('.room').count() == 6, f'{theme}: 6 Räume im Grundriss')
+        check(await pg.locator('.kc').count() == 6, f'{theme}: 6 Raumkarten')
         # Ding mit Foto einräumen
         items = [('Keller', 'Regal links', 'Akkuschrauber Bosch', 1, 'Werkzeug, Akku'), ('Keller', 'Regal links', 'Weihnachtsdeko', 3, 'Kisten'),
                  ('Keller', 'Weinregal', 'Rotwein Zweigelt', 6, ''), ('Werkstatt', 'Wand', 'Schraubenzieher-Set', 1, 'Werkzeug'),
@@ -48,7 +48,7 @@ async def run(theme):
         check(len(await pg.evaluate("S.items")) == 7, f'{theme}: 7 Dinge gespeichert')
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(400)
         await shot('02-home')
-        await pg.click('.room:has-text("Keller")'); await pg.wait_for_timeout(300)
+        await pg.click('.kc:has-text("Keller")'); await pg.wait_for_timeout(300)
         await shot('04-room')
         check(await pg.locator('.shelf').count() == 2, f'{theme}: Keller hat 2 Plätze')
         await pg.click('.it:has-text("Akkuschrauber")'); await pg.wait_for_timeout(400)
@@ -66,7 +66,7 @@ async def run(theme):
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(200); await pg.click('.annex'); await pg.wait_for_timeout(400); await shot('08-newroom')
         # Zurück-Taste schließt das Sheet, ohne die Seite zu verlassen
         await pg.go_back(); await pg.wait_for_timeout(300)
-        check(await pg.locator('#sheet').is_hidden() and await pg.locator('.plan').count() == 1, f'{theme}: Zurück schließt Sheet')
+        check(await pg.locator('#sheet').is_hidden() and await pg.locator('.kk').count() == 1, f'{theme}: Zurück schließt Sheet')
         # Löschen + Rückgängig
         nid = await pg.evaluate("S.items.find(i=>i.name==='Nudeln').id")
         await pg.goto(BASE + '#/room/' + await pg.evaluate("S.items.find(i=>i.name==='Nudeln').roomId")); await pg.wait_for_timeout(200)

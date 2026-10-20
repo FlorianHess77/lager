@@ -1,6 +1,6 @@
 # Lager – Was liegt wo?
 
-Dein Zuhause als Grundriss: Räume anlegen (Keller, Küche, Werkstatt …), darin Plätze (Regal, Kiste, Lade) und alles, was dort liegt – mit Fotos, Menge, Schlagworten und Notiz. Die Suche findet jedes Ding samt Ort, auch bei Tippfehlern, Umlauten oder Mehrzahl.
+Jeder Raum eine Karteikarte: Räume anlegen (Keller, Küche, Werkstatt …), darin Plätze (Regal, Kiste, Lade) und alles, was dort liegt – mit Fotos, Menge, Schlagworten und Notiz. Die Suche findet jedes Ding samt Ort, auch bei Tippfehlern, Umlauten oder Mehrzahl.
 
 **App:** https://florianhess77.github.io/lager/
 
@@ -8,7 +8,7 @@ Dein Zuhause als Grundriss: Räume anlegen (Keller, Küche, Werkstatt …), dari
 In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Startbildschirm ohne Browserleiste und funktioniert offline.
 
 ## Funktionen
-- Grundriss-Startseite mit allen Räumen (Farbe und Symbol frei wählbar, Reihenfolge unter *Mehr*)
+- Startseite als Karteikasten: jeder Raum eine Karte mit Reiter und Vorschau der letzten Dinge (Farbe, Symbol und Reihenfolge frei wählbar)
 - Plätze innerhalb eines Raums, umbenennen oder entfernen
 - Fotos direkt in der App aufnehmen oder aus der Galerie (bis zu 6 pro Ding)
 - Suche über Name, Schlagworte, Platz, Raum und Notiz – mit Spracheingabe

@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.0.0';
+const APP_VER = 'lager-1.1.0';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -52,7 +52,7 @@ const I = {
   dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>',
   pin: '<svg viewBox="0 0 24 24" class="pin"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z" fill="currentColor" stroke="none" opacity=".9"/><circle cx="12" cy="9.5" r="2.6" fill="var(--card)"/></svg>',
 };
-const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="10" fill="#FFD23F"/><path d="M10 10h28v28H10z M10 24h11 M21 10v7 M27 24h11 M27 24v14" fill="none" stroke="#1D2433" stroke-width="3.6" stroke-linejoin="round"/><path d="M21 17a7 7 0 0 1 0 7" fill="none" stroke="#1D2433" stroke-width="1.6" stroke-dasharray="2 2"/></svg>';
+const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="10" fill="#FFD23F"/><g fill="none" stroke="#1D2433" stroke-width="3" stroke-linejoin="round"><path d="M9 20h8v-6h12v6h10v18H9z"/><path d="M9 28h16v-5h11v5h3"/></g></svg>';
 
 /* =====================================================================
    Datenbank (IndexedDB, Rückfall: Arbeitsspeicher)
@@ -245,28 +245,21 @@ function emptyBox(title, text, btn = '') {
    ===================================================================== */
 const V = {};
 
-/* ---------- Start: Grundriss ---------- */
-function planRows(rooms) {
-  const rows = []; let i = 0, k = 0;
-  const pats = [[4, 2], [3, 3], [2, 4], [2, 2, 2]];
-  while (i < rooms.length) {
-    const left = rooms.length - i; let p;
-    if (left === 1) p = [6];
-    else if (left === 2) p = k % 2 ? [2, 4] : [4, 2];
-    else if (left === 3) p = k % 2 ? [3, 3] : [2, 2, 2];
-    else if (left === 4) p = k % 2 ? [3, 3] : [4, 2];
-    else p = pats[k % pats.length];
-    if (left === 3 && p.length === 2) p = [2, 2, 2];
-    const members = rooms.slice(i, i + p.length);
-    // größerer Raum bekommt das größere Zimmer
-    if (p.length === 2 && p[0] !== p[1]) {
-      const [a, b] = members; const na = itemsIn(a.id).length, nb = itemsIn(b.id).length;
-      if ((p[0] > p[1] && nb > na) || (p[1] > p[0] && na > nb)) p = [p[1], p[0]];
-    }
-    rows.push(members.map((room, j) => ({ room, span: p[j] })));
-    i += p.length; k++;
-  }
-  return rows;
+/* ---------- Start: Karteikasten ---------- */
+// Reiter-Positionen springen hin und her, damit sich benachbarte Reiter nicht verdecken
+const TABPOS = [0, 34, 12, 40, 4, 26, 18, 38];
+function cardStack() {
+  return `<div class="kk">${S.rooms.map((room, i) => {
+    const items = itemsIn(room.id); const hasLow = items.some(isLow);
+    const prev = items.slice().sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 3);
+    const more = items.length - prev.length;
+    return `<a class="kc${TABPOS[i % TABPOS.length] === 0 ? ' t0' : ''}" href="#/room/${room.id}" style="--c:${room.color};--tx:${TABPOS[i % TABPOS.length]}%;z-index:${i + 1}">
+      <span class="kc-tab"><span class="kc-ic">${room.icon || '📦'}</span><span class="kc-name">${esc(room.name)}</span></span>
+      <span class="kc-line"></span>
+      <span class="kc-meta">${items.length ? plural(items.length, 'Ding', 'Dinge') : 'noch leer'}${hasLow ? '<span class="kc-warn">wird knapp</span>' : ''}</span>
+      <span class="kc-prev">${prev.length ? prev.map(it => `<span>${esc(it.name)}</span>`).join('') + (more > 0 ? `<span class="more">+${more}</span>` : '') : '<span class="ghost">Tippe, um einzuräumen</span>'}</span>
+    </a>`;
+  }).join('')}</div>`;
 }
 V.home = () => {
   if (!S.rooms.length) return V.welcome();
@@ -279,18 +272,6 @@ V.home = () => {
     lent ? `<a class="pill" href="#/lists/lent"><span class="dot lent"></span>${plural(lent, 'Ding', 'Dinge')} verliehen</a>` : '',
     bkDue ? `<a class="pill" href="#/more"><span class="dot bk"></span>Backup machen</a>` : '',
   ].join('');
-  const rows = planRows(S.rooms).map((row, ri) => `<div class="prow n${row.length}">${row.map(({ room, span }, ci) => {
-    const n = itemsIn(room.id); const hasLow = n.some(isLow);
-    const door = ri > 0 || ci === 0;
-    const dx = 14 + ((room.name.length * 7 + ci * 13) % (row.length === 3 ? 12 : 24));
-    return `<a class="room" href="#/room/${room.id}" style="--c:${room.color};--s:${span}">
-      ${door ? `<span class="door" style="--dx:${dx}px"></span>` : ''}
-      ${hasLow ? '<span class="r-warn" title="Etwas wird knapp"></span>' : ''}
-      <span class="r-ic">${room.icon || '📦'}</span>
-      <span class="r-name">${esc(room.name)}</span>
-      <span class="r-meta">${n.length ? plural(n.length, 'Ding', 'Dinge') : 'noch leer'}</span>
-    </a>`;
-  }).join('')}</div>`).join('');
   const recent = S.items.slice().sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 10);
   return {
     tab: 'home',
@@ -302,9 +283,9 @@ V.home = () => {
     ${installBanner()}
     <a class="tape" href="#/search?focus=1">${I.search}<span class="ph">Wo ist …?</span></a>
     ${notes ? `<div class="notes">${notes}</div>` : ''}
-    <div class="plan-head"><h2>Grundriss</h2><span class="sub">Tippe auf einen Raum</span></div>
-    <div class="plan">${rows}</div>
-    <button class="annex" data-a="newRoom">${I.plus}Raum anbauen</button>
+    <div class="plan-head"><h2>Räume</h2><span class="sub">Tippe auf eine Karte</span></div>
+    ${cardStack()}
+    <button class="annex" data-a="newRoom">${I.plus}Raum hinzufügen</button>
     ${recent.length ? `<div class="section-h"><h2>Zuletzt eingeräumt</h2><a href="#/lists/all">Alle ansehen</a></div>
     <div class="strip">${recent.map(it => { const r = roomById(it.roomId); return `<a class="card-s" href="#/item/${it.id}">${thumb(it)}<b>${esc(it.name)}</b><small>${r?.icon || ''} ${esc(r?.name || '')}</small></a>`; }).join('')}</div>` : ''}
     `,
@@ -316,18 +297,19 @@ let starterPick = new Set(['Keller', 'Küche', 'Werkstatt']);
 V.welcome = () => ({
   tab: 'home',
   html: `<div class="welcome">
-    <div class="blue"><svg viewBox="0 0 340 150" fill="none" stroke="currentColor" stroke-linejoin="round">
-      <rect x="6" y="6" width="328" height="138" stroke-width="6"/>
-      <path d="M130 6v58 M6 82h124 M130 104v40 M220 6v138 M220 70h114" stroke-width="5"/>
-      <path d="M130 64a18 18 0 0 1 18 18" stroke-width="1.5" stroke-dasharray="3 3" opacity=".5"/><path d="M130 64v18" stroke-width="2" opacity=".5"/>
-      <path d="M220 96a18 18 0 0 0-18 18" stroke-width="1.5" stroke-dasharray="3 3" opacity=".5"/>
-      <g font-family="Bricolage Grotesque, sans-serif" font-size="13" fill="currentColor" stroke="none" opacity=".55" font-style="italic">
-        <text x="22" y="40">Keller?</text><text x="150" y="118">Werkstatt?</text><text x="238" y="44">Küche?</text></g>
-      <rect x="255" y="96" width="46" height="26" fill="#FFD23F" stroke="none" transform="rotate(-6 278 109)"/>
-      <text x="262" y="114" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1D2433" stroke="none" transform="rotate(-6 278 109)">hier!</text>
+    <div class="blue"><svg viewBox="0 0 340 170" stroke-linejoin="round">
+      <g stroke="currentColor" stroke-width="2.5">
+        <path d="M20 38h86v-20a8 8 0 0 1 8-8h70a8 8 0 0 1 8 8v20h128v120H20z" fill="#C9CFD8"/>
+        <path d="M20 78h150v-20a8 8 0 0 1 8-8h76a8 8 0 0 1 8 8v20h98v80H20z" fill="#F7B58C"/>
+        <path d="M20 118h40v-20a8 8 0 0 1 8-8h96a8 8 0 0 1 8 8v20h188v40H20z" fill="#F2C98A"/>
+      </g>
+      <g font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="16" fill="#1D2433">
+        <text x="122" y="32">Keller</text><text x="190" y="72">Küche</text><text x="78" y="112">Werkstatt</text></g>
+      <rect x="244" y="122" width="58" height="26" fill="#FFD23F" transform="rotate(-6 273 135)"/>
+      <text x="254" y="140" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1D2433" transform="rotate(-6 273 135)">hier!</text>
     </svg></div>
     <h1>Wo liegt eigentlich die Bohrmaschine?</h1>
-    <p>Zeichne dir zuerst dein Zuhause: Tippe an, welche Räume es bei dir gibt. Danach räumst du ein, was drinnen liegt – mit Foto und genauem Platz.</p>
+    <p>Leg dir zuerst für jeden Raum eine Karteikarte an: Tippe an, welche Räume es bei dir gibt. Danach räumst du ein, was drinnen liegt – mit Foto und genauem Platz.</p>
     <div class="chips" style="margin-bottom:22px">${STARTER.map(([n, ic, c]) => `<button class="chip" style="--c:${c}" data-a="starter" data-n="${n}" aria-pressed="${starterPick.has(n)}">${ic} ${n}</button>`).join('')}</div>
     <button class="btn primary block" data-a="createStarter" ${starterPick.size ? '' : 'disabled'}>${starterPick.size ? `${plural(starterPick.size, 'Raum', 'Räume')} anlegen` : 'Räume antippen'}</button>
     <div style="text-align:center;margin-top:8px"><button class="linkbtn" data-a="newRoom">Eigenen Raum anlegen</button> <button class="linkbtn" data-a="importBackup">Backup laden</button></div>
@@ -360,12 +342,11 @@ V.room = (id) => {
   return {
     tab: 'home', addRoom: id,
     html: `<header class="hero" style="--c:${room.color}">
-      <div class="bar"><a class="icbtn" href="#/" aria-label="Zurück zum Grundriss">${I.back}</a>
+      <div class="bar"><a class="icbtn" href="#/" aria-label="Zurück zu den Räumen">${I.back}</a>
         <div class="bar-r"><button class="icbtn" data-a="shareRoom" data-id="${id}" aria-label="Inhaltsliste teilen">${I.share}</button><button class="icbtn" data-a="editRoom" data-id="${id}" aria-label="Raum bearbeiten">${I.edit}</button></div></div>
       <div class="h-ic">${room.icon || '📦'}</div>
       <h1>${esc(room.name)}</h1>
       <p>${items.length ? plural(items.length, 'Ding', 'Dinge') : 'Noch nichts eingeräumt'}${nPlaces ? ` an ${plural(nPlaces, 'Platz', 'Plätzen')}` : ''}</p>
-      <span class="door"></span>
     </header>
     ${items.length > 6 ? `<label class="field-search">${I.search}<input id="roomQ" type="search" placeholder="In ${esc(room.name)} suchen" value="${esc(q)}" autocomplete="off"></label>` : ''}
     <div id="roomBody">${body}</div>`,
@@ -600,7 +581,7 @@ V.more = () => {
     html: `<h1 class="big-h">Mehr</h1>
     <div class="group"><div class="stats"><div><b>${S.items.length}</b><span>Dinge</span></div><div><b>${pieces}</b><span>Stück</span></div><div><b>${nPh}</b><span>Fotos</span></div></div></div>
     <div class="group"><h3>Darstellung</h3><div style="padding:6px 16px 14px"><div class="seg" style="margin:0">${[['system', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="${k === theme ? 'on' : ''}" data-a="theme" data-t="${k}">${l}</button>`).join('')}</div></div></div>
-    <div class="group"><h3>Räume ordnen</h3><p class="p">Bestimmt, wie die Räume im Grundriss angeordnet sind.</p>
+    <div class="group"><h3>Räume ordnen</h3><p class="p">Bestimmt die Reihenfolge der Karten auf der Startseite.</p>
       ${S.rooms.length ? S.rooms.map((r, i) => `<div class="order-row"><span class="sw" style="--c:${r.color}"></span><span class="grow">${r.icon || ''} ${esc(r.name)}</span><button data-a="roomUp" data-id="${r.id}" ${i === 0 ? 'disabled' : ''} aria-label="Nach vorne">↑</button><button data-a="roomDown" data-id="${r.id}" ${i === S.rooms.length - 1 ? 'disabled' : ''} aria-label="Nach hinten">↓</button></div>`).join('') : '<p class="p">Noch keine Räume.</p>'}
     </div>
     <div class="group"><h3>Datensicherung</h3><p class="p">Alles bleibt nur auf diesem Handy gespeichert. ${bk ? `Letztes Backup: ${fmtDate(bk)}.` : 'Du hast noch kein Backup gemacht.'}</p>
@@ -615,7 +596,7 @@ V.more = () => {
   };
 };
 
-V.missing = () => ({ tab: 'home', html: emptyBox('Nicht mehr da', 'Dieses Ding oder dieser Raum wurde gelöscht.', '<a class="btn" href="#/">Zum Grundriss</a>') });
+V.missing = () => ({ tab: 'home', html: emptyBox('Nicht mehr da', 'Dieses Ding oder dieser Raum wurde gelöscht.', '<a class="btn" href="#/">Zu den Räumen</a>') });
 
 /* =====================================================================
    Router
@@ -709,7 +690,7 @@ function roomSheet(room, fromForm) {
   const body = () => `<div class="form">
       <div class="fl"><label for="rName">Name</label><input class="inp big" id="rName" value="${esc(R.name)}" placeholder="z. B. Keller" enterkeyhint="done"></div>
       <div class="fl"><span class="lbl">Symbol</span><div class="emojis">${EMOJIS.map(e => `<button type="button" class="${e === R.icon ? 'on' : ''}" data-e="${e}">${e}</button>`).join('')}</div></div>
-      <div class="fl"><span class="lbl">Farbe im Grundriss</span><div class="colors">${COLORS.map(([n, c]) => `<button type="button" class="${c === R.color ? 'on' : ''}" style="--c:${c}" data-c="${c}" aria-label="${n}"></button>`).join('')}</div></div>
+      <div class="fl"><span class="lbl">Farbe der Karte</span><div class="colors">${COLORS.map(([n, c]) => `<button type="button" class="${c === R.color ? 'on' : ''}" style="--c:${c}" data-c="${c}" aria-label="${n}"></button>`).join('')}</div></div>
     </div>`;
   openSheet(room ? 'Raum bearbeiten' : 'Neuer Raum', body(),
     `<button class="btn primary block" data-a="roomSave">${room ? 'Speichern' : 'Raum anlegen'}</button>${room ? `<button class="btn danger block" data-a="roomDel" data-id="${room.id}">${I.trash}Raum löschen</button>` : ''}`);
@@ -849,7 +830,7 @@ const actions = {
   createStarter: async () => {
     let o = 0;
     for (const [n, ic, c] of STARTER) if (starterPick.has(n)) await saveRoom({ id: uid(), name: n, icon: ic, color: c, places: [], order: o++, created: Date.now() });
-    toast('Grundriss steht. Jetzt einräumen!'); rerender();
+    toast('Räume angelegt. Jetzt einräumen!'); rerender();
   },
   newRoom: el => roomSheet(null, el.dataset.from === 'form'),
   editRoom: el => roomSheet(roomById(el.dataset.id)),
