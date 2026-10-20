@@ -60,9 +60,11 @@
 <div id="cam" class="cam" hidden>
   <video playsinline muted autoplay></video>
   <div class="cam-frame"></div>
+  <div class="cam-hint" hidden></div>
   <div class="cam-bar">
     <button class="cam-x" data-a="camClose" aria-label="Kamera schließen">✕</button>
     <button class="cam-shot" data-a="camShot" aria-label="Foto aufnehmen"></button>
+    <button class="cam-type" data-a="camType">Nummer eintippen</button>
     <button class="cam-gal" data-a="camGallery" aria-label="Aus Galerie wählen">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>
     </button>
@@ -80,6 +82,7 @@
 <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
 <input id="fileBackup" type="file" accept="application/json,.json" hidden>
 
+<script src="vendor/qrcode.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
