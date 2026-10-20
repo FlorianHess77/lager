@@ -1,13 +1,42 @@
 {
-  "builtAt": "2026-10-20T21:29:06.999Z",
+  "builtAt": "2026-10-20T21:31:38.477Z",
   "model": "Xenova/mobileclip_s0",
-  "probeCats": [
-    "Yogamatte 0.161",
-    "Spaten 0.145",
-    "Kleid 0.137",
-    "Papier 0.133",
-    "Rechen 0.128"
-  ],
+  "eval": {
+    "q8": {
+      "cats": 0.087,
+      "margin": 0.002,
+      "remoteRank": 204,
+      "top": [
+        "Yogamatte 0.161",
+        "Spaten 0.145",
+        "Kleid 0.137",
+        "Papier 0.133"
+      ]
+    },
+    "fp16": {
+      "cats": 0.245,
+      "margin": 0.143,
+      "remoteRank": 14,
+      "top": [
+        "Hundebett 0.177",
+        "Tierfutter 0.176",
+        "Katzenklo 0.163",
+        "Transportbox 0.149"
+      ]
+    },
+    "fp32": {
+      "cats": 0.245,
+      "margin": 0.143,
+      "remoteRank": 14,
+      "top": [
+        "Hundebett 0.177",
+        "Tierfutter 0.176",
+        "Katzenklo 0.163",
+        "Transportbox 0.149"
+      ]
+    }
+  },
+  "dtype": "fp16",
   "terms": 310,
   "dim": 512
 }
