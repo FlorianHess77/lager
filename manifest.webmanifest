@@ -1,0 +1,22 @@
+{
+  "name": "Lager – Was liegt wo?",
+  "short_name": "Lager",
+  "description": "Dein Zuhause als Grundriss: Räume, Plätze und alles, was darin liegt – mit Suche und Fotos.",
+  "lang": "de",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F5F0",
+  "theme_color": "#F3F5F0",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Suchen", "short_name": "Suchen", "url": "./#/search?focus=1", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Einräumen", "short_name": "Einräumen", "url": "./#/edit/new", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}
