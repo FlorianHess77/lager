@@ -49,8 +49,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
-          git add models vendor/transformers vendor/ort
+          git add -A models vendor/transformers vendor/ort
           if git diff --cached --quiet; then echo "Nichts geändert"; exit 0; fi
           git commit -m "Fotoerkennung: Modell und Wortschatz aktualisiert"
-          git pull --rebase origin main
-          git push
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep 5; done
+          exit 1
