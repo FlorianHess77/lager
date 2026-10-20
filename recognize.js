@@ -31,7 +31,15 @@ async function load(progress) {
     if (await exists(L('vendor/ort/ort-wasm-simd-threaded.jsep.wasm')) || await exists(L('vendor/ort/ort-wasm-simd-threaded.wasm'))) wasm.wasmPaths = L('vendor/ort/');
   }
   const processor = await T.AutoProcessor.from_pretrained(vocab.model);
-  const model = await T.CLIPVisionModelWithProjection.from_pretrained(vocab.model, { dtype: vocab.dtype || 'q8', device: 'wasm' });
+  // Probelauf, damit ein Gerät, das die Variante nicht ausführen kann, auf fp32 (direkt von Hugging Face) ausweicht
+  const probe = async m => { await m(await processor(new T.RawImage(new Uint8ClampedArray(64 * 64 * 4).fill(128), 64, 64, 4))); return m; };
+  let model;
+  try { model = await probe(await T.CLIPVisionModelWithProjection.from_pretrained(vocab.model, { dtype: vocab.dtype || 'fp16', device: 'wasm' })); }
+  catch {
+    progress?.('Lade Fotoerkennung (Ersatz) …');
+    T.env.allowRemoteModels = true;
+    model = await probe(await T.CLIPVisionModelWithProjection.from_pretrained(vocab.model, { dtype: 'fp32', device: 'wasm' }));
+  }
   return { T, processor, model, emb, vocab };
 }
 

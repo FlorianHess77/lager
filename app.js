@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.3.0';
+const APP_VER = 'lager-1.3.1';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -683,7 +683,7 @@ V.more = () => {
       <a class="gi" href="#/labels">${I.qr}<span class="grow">QR-Aufkleber für Kisten und Regale<small>Scannen zeigt sofort, was drin ist</small></span></a>
       <a class="gi" href="#/inventory">${I.print}<span class="grow">Inventarliste als PDF<small>Mit Fotos und Wert, z. B. für die Versicherung</small></span></a>
     </div>
-    <div class="group"><h3>Fotoerkennung</h3><p class="p">Schlägt beim Fotografieren einen Namen vor. Läuft am Handy, nichts wird hochgeladen. Beim ersten Mal wird das Modell einmalig geladen (etwa 15 MB).</p>
+    <div class="group"><h3>Fotoerkennung</h3><p class="p">Schlägt beim Fotografieren einen Namen vor. Läuft am Handy, nichts wird hochgeladen. Beim ersten Mal wird das Modell einmalig geladen (etwa 25 MB, am besten im WLAN).</p>
       <button class="gi" data-a="toggleRecog"><span class="grow">Namen aus Foto vorschlagen</span><span class="switch${recogOn() ? ' on' : ''}" role="switch" aria-checked="${recogOn()}"></span></button>
     </div>
     <div class="group"><h3>Datensicherung</h3><p class="p">Alles bleibt nur auf diesem Handy gespeichert. ${bk ? `Letztes Backup: ${fmtDate(bk)}.` : 'Du hast noch kein Backup gemacht.'}</p>

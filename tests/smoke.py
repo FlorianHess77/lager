@@ -133,8 +133,15 @@ async def run(theme):
         # Fotoerkennung ohne Modell: kein Fehler, keine Vorschläge
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(150); await pg.click('.nav-add'); await pg.wait_for_timeout(200)
         await pg.evaluate("camTarget=null")
-        await pg.set_input_files('#filePick', os.path.join(ROOT, 'tests', 'sample.jpg')); await pg.wait_for_timeout(1200)
-        check(await pg.locator('#fSugg .chip').count() == 0 and await pg.locator('#fPhotos .pt').count() == 1, f'{theme}: ohne Modell keine Vorschläge und kein Absturz')
+        await pg.set_input_files('#filePick', os.path.join(ROOT, 'tests', 'sample.jpg'))
+        try: await pg.wait_for_selector('#fSugg .chip', timeout=30000)
+        except Exception: pass
+        n = await pg.locator('#fSugg .chip').count()
+        check(n >= 1 and await pg.locator('#fPhotos .pt').count() == 1, f'{theme}: Fotoerkennung schlägt {n} Namen vor')
+        if n:
+            await shot('17-suggest')
+            await pg.locator('#fSugg .chip').first.click()
+            check(await pg.input_value('#fName') != '' and await pg.input_value('#fTags') != '', f'{theme}: Vorschlag füllt Name und Schlagwort')
         await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(200); await pg.click('.annex'); await pg.wait_for_timeout(300)
         # Zurück-Taste schließt das Sheet, ohne die Seite zu verlassen
