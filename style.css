@@ -351,7 +351,11 @@ body.no-nav .nav { display: none; }
 .gal::-webkit-scrollbar { display: none; }
 .gal .ph { flex: 0 0 100%; scroll-snap-align: center; aspect-ratio: 4/3; border-radius: 20px; overflow: hidden; background: var(--paper-2); }
 .gal.multi .ph { flex-basis: 88%; }
+.gal .ph { position: relative; border: 0; padding: 0; display: block; cursor: zoom-in; }
 .gal .ph img { width: 100%; height: 100%; object-fit: cover; }
+.gal .zoom-ic { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; background: rgba(0,0,0,.5); display: grid; place-items: center; }
+.gal .zoom-ic svg { width: 20px; height: 20px; stroke: #fff; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+.photos .pt img { cursor: zoom-in; }
 .noimg {
   --tint: color-mix(in oklab, var(--c) var(--tint-mix), var(--paper));
   aspect-ratio: 16/9; border-radius: 20px; margin-bottom: 16px;
@@ -497,6 +501,17 @@ textarea.inp { min-height: 90px; resize: vertical; }
 .cam-gal svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 2; fill: none; stroke-linejoin: round; }
 .cam.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: flash .25s forwards; }
 @keyframes flash { to { opacity: 0; } }
+
+/* ---------- Foto-Vollbild ---------- */
+.viewer { position: fixed; inset: 0; z-index: 65; background: #000; animation: fade .18s; }
+.vw-track { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain; }
+.vw-track::-webkit-scrollbar { display: none; }
+.vw-track.locked { overflow: hidden; }
+.vw-slide { flex: 0 0 100%; height: 100%; scroll-snap-align: center; scroll-snap-stop: always; overflow: hidden; position: relative; touch-action: pan-x; }
+.vw-slide.zoom { touch-action: none; cursor: grab; }
+.vw-slide img { width: 100%; height: 100%; object-fit: contain; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+.vw-x { position: absolute; top: calc(14px + var(--safe-t)); right: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255,255,255,.16); color: #fff; font-size: 1.25rem; z-index: 2; }
+.vw-count { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(20px + var(--safe-b)); background: rgba(255,255,255,.16); color: #fff; font-weight: 700; font-size: .9rem; padding: 5px 14px; border-radius: 999px; pointer-events: none; }
 
 /* ---------- Toast ---------- */
 .toast {

@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.1.0';
+const APP_VER = 'lager-1.2.0';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -50,6 +50,7 @@ const I = {
   sort: '<svg viewBox="0 0 24 24"><path d="M7 4v16 M3 8l4-4 4 4 M17 20V4 M13 16l4 4 4-4"/></svg>',
   back2: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5 M4 9h11a5 5 0 0 1 0 10h-3"/></svg>',
   dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>',
+  expand: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6 M20 4l-7 7 M10 20H4v-6 M4 20l7-7"/></svg>',
   pin: '<svg viewBox="0 0 24 24" class="pin"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z" fill="currentColor" stroke="none" opacity=".9"/><circle cx="12" cy="9.5" r="2.6" fill="var(--card)"/></svg>',
 };
 const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" width="44" height="44" rx="10" fill="#FFD23F"/><g fill="none" stroke="#1D2433" stroke-width="3" stroke-linejoin="round"><path d="M9 20h8v-6h12v6h10v18H9z"/><path d="M9 28h16v-5h11v5h3"/></g></svg>';
@@ -370,7 +371,7 @@ V.item = (id) => {
     tab: 'home',
     html: `<div class="pagebar"><button class="icbtn" data-a="goBack" aria-label="Zurück">${I.back}</button><h1></h1><a class="icbtn" href="#/edit/${id}" aria-label="Bearbeiten">${I.edit}</a></div>
     ${photos.length
-      ? `<div class="gal${photos.length > 1 ? ' multi' : ''}">${photos.map(p => `<div class="ph"><img data-ph="${p}" data-kind="full" alt="Foto von ${esc(it.name)}"></div>`).join('')}</div>`
+      ? `<div class="gal${photos.length > 1 ? ' multi' : ''}">${photos.map((p, i) => `<button class="ph" data-a="viewItem" data-id="${id}" data-i="${i}" aria-label="Foto ${i + 1} groß anzeigen"><img data-ph="${p}" data-kind="full" alt="Foto von ${esc(it.name)}"><span class="zoom-ic">${I.expand}</span></button>`).join('')}</div>`
       : `<div class="noimg" style="--c:${room?.color || '#C9CFD8'}">${esc(it.name.trim().charAt(0).toUpperCase())}<button class="btn" data-a="quickPhoto" data-id="${id}">${I.cam}Foto dazu</button></div>`}
     <h1 class="d-name">${esc(it.name)}</h1>
     <a class="where" href="#/room/${it.roomId}" style="--c:${room?.color || '#C9CFD8'}">
@@ -448,7 +449,7 @@ V.edit = (id, q) => {
 };
 async function drawPhotos() {
   const box = $('#fPhotos'); if (!box) return;
-  box.innerHTML = F.photos.map((p, i) => `<div class="pt"><img data-ph="${p}" alt="">${i === 0 && F.photos.length > 1 ? '<span class="first">Titelbild</span>' : ''}<button type="button" class="x" data-a="fDelPhoto" data-p="${p}" aria-label="Foto entfernen">✕</button></div>`).join('')
+  box.innerHTML = F.photos.map((p, i) => `<div class="pt"><img data-ph="${p}" alt="" data-a="viewForm" data-i="${i}">${i === 0 && F.photos.length > 1 ? '<span class="first">Titelbild</span>' : ''}<button type="button" class="x" data-a="fDelPhoto" data-p="${p}" aria-label="Foto entfernen">✕</button></div>`).join('')
     + (F.photos.length < 6 ? `<button type="button" class="add" data-a="fCam">${I.cam}Kamera</button><button type="button" class="add" data-a="fGallery">${I.img}Galerie</button>` : '');
   hydrate(box);
 }
@@ -659,7 +660,8 @@ function closeSheet() {
 addEventListener('popstate', () => {
   if (popWait) { const r = popWait; popWait = null; r(); return; }
   if (sheetOpen) { hideSheet(); return; }
-  if (camOpen) { stopCam(); }
+  if (camOpen) { stopCam(); return; }
+  if (viewerOpen) { hideViewer(); }
 });
 async function go(h) { await closeSheet(); if (location.hash === h) rerender(); else location.hash = h; }
 
@@ -759,6 +761,123 @@ for (const sel of ['#filePick', '#fileCam']) {
   });
 }
 $('#filePick').multiple = true;
+
+/* =====================================================================
+   Fotos im Vollbild: wischen, mit zwei Fingern zoomen, doppelt tippen
+   ===================================================================== */
+let viewerOpen = false;
+const Z = { s: 1, x: 0, y: 0 }; // Zoom des aktuellen Fotos
+function openViewer(ids, start = 0) {
+  if (!ids?.length) return;
+  const vw = $('#viewer'), track = $('.vw-track', vw);
+  track.innerHTML = ids.map(p => `<div class="vw-slide"><img data-ph="${p}" data-kind="full" alt="" draggable="false"></div>`).join('');
+  $('.vw-count', vw).hidden = ids.length < 2;
+  vw.hidden = false; viewerOpen = true;
+  history.pushState({ viewer: 1 }, '');
+  hydrate(vw);
+  requestAnimationFrame(() => { track.scrollLeft = start * track.clientWidth; updateCount(); });
+}
+function hideViewer() {
+  viewerOpen = false; $('#viewer').hidden = true; $('.vw-track').innerHTML = ''; resetZoom();
+}
+function closeViewer() {
+  if (!viewerOpen) return Promise.resolve();
+  hideViewer();
+  if (history.state?.viewer) return new Promise(res => { popWait = res; history.back(); });
+  return Promise.resolve();
+}
+function curSlide() { const t = $('.vw-track'); return t.children[Math.round(t.scrollLeft / Math.max(1, t.clientWidth))]; }
+function updateCount() {
+  const t = $('.vw-track'), n = t.children.length; if (!n) return;
+  $('.vw-count').textContent = `${Math.round(t.scrollLeft / Math.max(1, t.clientWidth)) + 1} / ${n}`;
+}
+function applyZoom(slide) {
+  slide = slide || curSlide(); if (!slide) return;
+  const W = slide.clientWidth, H = slide.clientHeight;
+  Z.s = Math.min(5, Math.max(1, Z.s));
+  Z.x = Math.min(0, Math.max(W - Z.s * W, Z.x)); Z.y = Math.min(0, Math.max(H - Z.s * H, Z.y));
+  if (Z.s === 1) { Z.x = 0; Z.y = 0; }
+  slide.firstElementChild.style.transform = `translate(${Z.x}px,${Z.y}px) scale(${Z.s})`;
+  const zoomed = Z.s > 1.01;
+  slide.classList.toggle('zoom', zoomed); $('.vw-track').classList.toggle('locked', zoomed);
+}
+function resetZoom() {
+  Z.s = 1; Z.x = 0; Z.y = 0;
+  for (const s of $$('.vw-slide')) { s.classList.remove('zoom'); s.firstElementChild.style.transform = ''; }
+  $('.vw-track')?.classList.remove('locked');
+}
+(() => {
+  const track = $('.vw-track');
+  let g = null, lastTap = 0, scrollT = null;
+  const rel = (slide, t) => { const r = slide.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+  track.addEventListener('scroll', () => {
+    updateCount();
+    clearTimeout(scrollT); scrollT = setTimeout(() => { if (Z.s === 1) resetZoom(); }, 120);
+  }, { passive: true });
+  track.addEventListener('touchstart', e => {
+    const slide = curSlide(); if (!slide) return;
+    if (e.touches.length === 2) {
+      const a = rel(slide, e.touches[0]), b = rel(slide, e.touches[1]);
+      g = { type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y), m0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, s0: Z.s, x0: Z.x, y0: Z.y };
+    } else if (e.touches.length === 1) {
+      const p = rel(slide, e.touches[0]);
+      g = { type: Z.s > 1.01 ? 'pan' : 'tap', p0: p, x0: Z.x, y0: Z.y, moved: false };
+    }
+  }, { passive: true });
+  track.addEventListener('touchmove', e => {
+    if (!g) return; const slide = curSlide(); if (!slide) return;
+    if (g.type === 'pinch' && e.touches.length === 2) {
+      e.preventDefault();
+      const a = rel(slide, e.touches[0]), b = rel(slide, e.touches[1]);
+      const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const s = Math.min(5, Math.max(1, g.s0 * d / Math.max(1, g.d0)));
+      const px = (g.m0.x - g.x0) / g.s0, py = (g.m0.y - g.y0) / g.s0; // Bildpunkt unter den Fingern
+      Z.s = s; Z.x = m.x - s * px; Z.y = m.y - s * py; applyZoom(slide);
+    } else if (g.type === 'pan' && e.touches.length === 1) {
+      e.preventDefault();
+      const p = rel(slide, e.touches[0]); g.moved = true;
+      Z.x = g.x0 + p.x - g.p0.x; Z.y = g.y0 + p.y - g.p0.y; applyZoom(slide);
+    } else if (g.type === 'tap') {
+      const p = rel(slide, e.touches[0]); if (Math.hypot(p.x - g.p0.x, p.y - g.p0.y) > 10) g.moved = true;
+    }
+  }, { passive: false });
+  track.addEventListener('touchend', e => {
+    if (!g) return;
+    if (g.type === 'pinch' && e.touches.length < 2) { if (Z.s < 1.05) resetZoom(); g = e.touches.length === 1 ? { type: 'pan', p0: rel(curSlide(), e.touches[0]), x0: Z.x, y0: Z.y, moved: true } : null; return; }
+    if (e.touches.length) return;
+    if (!g.moved) {
+      const now = Date.now();
+      if (now - lastTap < 300) { lastTap = 0; toggleZoomAt(g.p0); } else lastTap = now;
+    }
+    g = null;
+  });
+  function toggleZoomAt(p) {
+    const slide = curSlide(); if (!slide) return;
+    if (Z.s > 1.01) { resetZoom(); return; }
+    Z.s = 2.5; Z.x = p.x * (1 - Z.s); Z.y = p.y * (1 - Z.s); applyZoom(slide);
+  }
+  // Maus/Trackpad (Desktop)
+  track.addEventListener('dblclick', e => { const slide = curSlide(); if (slide) toggleZoomAt(rel(slide, e)); });
+  track.addEventListener('wheel', e => {
+    const slide = curSlide(); if (!slide || !e.ctrlKey && Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+    e.preventDefault();
+    const p = rel(slide, e), s0 = Z.s, s = Math.min(5, Math.max(1, s0 * Math.exp(-e.deltaY / 300)));
+    const px = (p.x - Z.x) / s0, py = (p.y - Z.y) / s0;
+    Z.s = s; Z.x = p.x - s * px; Z.y = p.y - s * py; applyZoom(slide);
+  }, { passive: false });
+  let drag = null;
+  track.addEventListener('mousedown', e => { if (Z.s > 1.01) { drag = { x: e.clientX, y: e.clientY, x0: Z.x, y0: Z.y }; e.preventDefault(); } });
+  addEventListener('mousemove', e => { if (drag) { Z.x = drag.x0 + e.clientX - drag.x; Z.y = drag.y0 + e.clientY - drag.y; applyZoom(); } });
+  addEventListener('mouseup', () => { drag = null; });
+  addEventListener('keydown', e => {
+    if (!viewerOpen) return;
+    const t = $('.vw-track');
+    if (e.key === 'Escape') closeViewer();
+    if (e.key === 'ArrowRight') { resetZoom(); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); }
+    if (e.key === 'ArrowLeft') { resetZoom(); t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' }); }
+  });
+  addEventListener('resize', () => { if (viewerOpen) { resetZoom(); } });
+})();
 
 /* =====================================================================
    Backup
@@ -889,6 +1008,9 @@ const actions = {
   fGallery: () => { saveDraft(); camTarget = null; $('#filePick').click(); },
   fDelPhoto: el => { const p = el.dataset.p; F.photos = F.photos.filter(x => x !== p); if (F.added.includes(p)) { F.added = F.added.filter(x => x !== p); delPhoto(p); } else F.removed.push(p); saveDraft(); drawPhotos(); },
   quickPhoto: el => openCam({ itemId: el.dataset.id }),
+  viewItem: el => openViewer(itemById(el.dataset.id)?.photos, Number(el.dataset.i) || 0),
+  viewForm: el => openViewer(F?.photos, Number(el.dataset.i) || 0),
+  closeViewer: () => closeViewer(),
   camClose: () => closeCam(),
   camShot: () => camShot(),
   camGallery: async () => { await closeCam(); $('#filePick').click(); },

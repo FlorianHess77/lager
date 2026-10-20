@@ -10,7 +10,7 @@ In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Sta
 ## Funktionen
 - Startseite als Karteikasten: jeder Raum eine Karte mit Reiter und Vorschau der letzten Dinge (Farbe, Symbol und Reihenfolge frei wählbar)
 - Plätze innerhalb eines Raums, umbenennen oder entfernen
-- Fotos direkt in der App aufnehmen oder aus der Galerie (bis zu 6 pro Ding)
+- Fotos direkt in der App aufnehmen oder aus der Galerie (bis zu 6 pro Ding), antippen für Vollbild mit Wischen und Zoomen
 - Suche über Name, Schlagworte, Platz, Raum und Notiz – mit Spracheingabe
 - Meldemenge: Dinge, die knapp werden, landen auf einem teilbaren Einkaufszettel
 - Verleihen: merkt sich, wer was hat und seit wann

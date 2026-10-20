@@ -53,6 +53,15 @@ async def run(theme):
         check(await pg.locator('.shelf').count() == 2, f'{theme}: Keller hat 2 Plätze')
         await pg.click('.it:has-text("Akkuschrauber")'); await pg.wait_for_timeout(400)
         await shot('05-item')
+        # Foto im Vollbild
+        await pg.click('.gal .ph'); await pg.wait_for_timeout(400)
+        check(await pg.locator('#viewer').is_visible(), f'{theme}: Foto öffnet im Vollbild')
+        check(await pg.evaluate("!!document.querySelector('.vw-slide img').src"), f'{theme}: Vollbild-Foto geladen')
+        await pg.screenshot(path=f'{OUT}/{theme}-05b-viewer.png')
+        await pg.dblclick('.vw-slide', position={'x': 120, 'y': 300}); await pg.wait_for_timeout(200)
+        check('scale(2.5)' in await pg.evaluate("document.querySelector('.vw-slide img').style.transform"), f'{theme}: Doppelklick zoomt')
+        await pg.go_back(); await pg.wait_for_timeout(300)
+        check(await pg.locator('#viewer').is_hidden() and '#/item/' in pg.url, f'{theme}: Zurück schließt Vollbild, Seite bleibt')
         # Suche mit Tippfehler / Mehrzahl / Umlaut
         for q, want in [('schraube', 'Schraubenzieher-Set'), ('akuschrauber', 'Akkuschrauber Bosch'), ('nudel', 'Nudeln'), ('werkzeug', 'Schraubenzieher-Set'), ('kuche', 'Nudeln'), ('winterreifen garage', 'Winterreifen')]:
             res = await pg.evaluate(f"search({q!r}).map(x=>x.it.name)")
