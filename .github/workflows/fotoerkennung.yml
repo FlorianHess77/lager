@@ -36,7 +36,7 @@ jobs:
           npm install --no-audit --no-fund --prefix /tmp/hf @huggingface/transformers@3
           H=/tmp/hf/node_modules
           cp $H/@huggingface/transformers/dist/transformers.min.js vendor/transformers/
-          ORT=$(find $H -type d -path '*onnxruntime-web/dist' | head -n 1)
+          ORT=$(find $H -type d -path '*onnxruntime-web/dist' -print -quit)
           echo "ONNX-Laufzeit: $ORT"
           rm -f vendor/ort/*
           cp "$ORT"/ort-wasm-simd-threaded* vendor/ort/ || echo "::warning::ONNX-WASM nicht gefunden – die App lädt sie dann vom CDN"
