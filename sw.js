@@ -3,7 +3,7 @@
 const CACHE = 'lager-' + (new URL(location.href).searchParams.get('v') || 'dev');
 const FONTS = 'lager-fonts';
 const CDN = 'lager-cdn';
-const FILES = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './vendor/qrcode.js', './recognize.js'];
+const FILES = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './vendor/qrcode.js', './recognize.js', './recognize-worker.js', './recognize-engine.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));

@@ -499,7 +499,7 @@ textarea.inp { min-height: 90px; resize: vertical; }
 .cam-shot:active { transform: scale(.92); }
 .cam-x, .cam-gal { width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.18); color: #fff; font-size: 1.3rem; display: grid; place-items: center; }
 .cam-gal svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 2; fill: none; stroke-linejoin: round; }
-.cam.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: flash .25s forwards; }
+.cam.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: flash .25s forwards; pointer-events: none; }
 @keyframes flash { to { opacity: 0; } }
 
 /* ---------- Foto-Vollbild ---------- */
@@ -565,6 +565,14 @@ body.no-nav .toast { bottom: calc(90px + var(--safe-b)); }
 .sugg-l { display: inline-flex; align-items: center; gap: 5px; font-size: .86rem; font-weight: 700; color: var(--ink-2); margin-right: 2px; }
 .sugg-l svg { width: 16px; height: 16px; fill: var(--tape-2); stroke: none; }
 .sugg-l.busy svg { animation: pulse 1s ease-in-out infinite; }
+.sugg-l.err { color: var(--danger); font-weight: 500; }
+.linkbtn.sm { padding: 2px 4px; font-size: .86rem; }
+.chip.spark { gap: 6px; }
+.chip.spark svg { width: 16px; height: 16px; fill: var(--tape-2); stroke: none; }
+.rtlog { margin: 0; padding: 12px 12px 12px 30px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; font-size: .84rem; line-height: 1.45; max-height: 50dvh; overflow-y: auto; }
+.rtlog li { margin: 2px 0; overflow-wrap: anywhere; }
+.rtlog li.ok { color: var(--ok); font-weight: 700; }
+.rtlog li.bad { color: var(--danger); font-weight: 700; }
 .sugg .chip { padding: 6px 12px; background: color-mix(in oklab, var(--tape) 30%, var(--card)); border-color: color-mix(in oklab, var(--tape-2) 60%, transparent); }
 .switch { flex: none; width: 46px; height: 28px; border-radius: 999px; background: var(--paper-2); border: 1.5px solid var(--line); position: relative; transition: background .15s; }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 21px; height: 21px; border-radius: 50%; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }

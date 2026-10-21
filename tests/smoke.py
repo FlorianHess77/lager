@@ -15,8 +15,8 @@ def check(cond, msg):
 
 async def run(theme):
     async with async_playwright() as p:
-        b = await p.chromium.launch()
-        ctx = await b.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, is_mobile=True,
+        b = await p.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'])
+        ctx = await b.new_context(permissions=['camera'], viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, is_mobile=True,
                                   locale='de-AT', color_scheme=theme)
         pg = await ctx.new_page()
         pg.on('pageerror', lambda e: errors.append(f'{theme}: JS-Fehler {e}'))
@@ -134,14 +134,23 @@ async def run(theme):
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(150); await pg.click('.nav-add'); await pg.wait_for_timeout(200)
         await pg.evaluate("camTarget=null")
         await pg.set_input_files('#filePick', os.path.join(ROOT, 'tests', 'sample.jpg'))
-        try: await pg.wait_for_selector('#fSugg .chip', timeout=30000)
+        try: await pg.wait_for_selector('#fSugg [data-a=pickSugg]', timeout=30000)
         except Exception: pass
-        n = await pg.locator('#fSugg .chip').count()
+        n = await pg.locator('#fSugg [data-a=pickSugg]').count()
         check(n >= 1 and await pg.locator('#fPhotos .pt').count() == 1, f'{theme}: Fotoerkennung schlägt {n} Namen vor')
         if n:
             await shot('17-suggest')
-            await pg.locator('#fSugg .chip').first.click()
+            await pg.locator('#fSugg [data-a=pickSugg]').first.click()
             check(await pg.input_value('#fName') != '' and await pg.input_value('#fTags') != '', f'{theme}: Vorschlag füllt Name und Schlagwort')
+        await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
+        await pg.goto(BASE + '#/'); await pg.wait_for_timeout(200); await pg.click('.annex'); await pg.wait_for_timeout(300)
+        # Kamera mehrmals hintereinander benutzen
+        await pg.goto(BASE + '#/'); await pg.wait_for_timeout(150); await pg.click('.nav-add'); await pg.wait_for_timeout(200)
+        await pg.fill('#fName', 'Kameratest')
+        for k in range(3):
+            await pg.click('[data-a="fCam"]'); await pg.wait_for_timeout(900)
+            await pg.tap('.cam-shot', timeout=5000); await pg.wait_for_timeout(700)
+        check(await pg.locator('#fPhotos .pt').count() == 3, f'{theme}: Kamera dreimal hintereinander')
         await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(200); await pg.click('.annex'); await pg.wait_for_timeout(300)
         # Zurück-Taste schließt das Sheet, ohne die Seite zu verlassen

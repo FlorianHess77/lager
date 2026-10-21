@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.3.1';
+const APP_VER = 'lager-1.3.2';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -518,6 +518,9 @@ V.edit = (id, q) => {
         if (n === 'place') drawPlaceChips();
       });
       form.addEventListener('submit', e => { e.preventDefault(); saveForm(false); });
+      $('#fName').addEventListener('input', () => { if (!SUG.state || SUG.key !== F.key) drawSugg(); });
+      // Modell schon mal im Hintergrund laden, wenn es früher geklappt hat (kommt dann aus dem Speicher)
+      if (recogOn() && lsGet('lager.recogReady')) recogMod().then(m => m.warmUp()).catch(() => {});
       if (isNew && !F.name && !q.has('nofocus')) setTimeout(() => $('#fName')?.focus(), 60);
     },
   };
@@ -527,6 +530,7 @@ async function drawPhotos() {
   box.innerHTML = F.photos.map((p, i) => `<div class="pt"><img data-ph="${p}" alt="" data-a="viewForm" data-i="${i}">${i === 0 && F.photos.length > 1 ? '<span class="first">Titelbild</span>' : ''}<button type="button" class="x" data-a="fDelPhoto" data-p="${p}" aria-label="Foto entfernen">✕</button></div>`).join('')
     + (F.photos.length < 6 ? `<button type="button" class="add" data-a="fCam">${I.cam}Kamera</button><button type="button" class="add" data-a="fGallery">${I.img}Galerie</button>` : '');
   hydrate(box);
+  drawSugg();
 }
 function drawDocs() {
   const box = $('#fDocs'); if (!box) return;
@@ -685,6 +689,7 @@ V.more = () => {
     </div>
     <div class="group"><h3>Fotoerkennung</h3><p class="p">Schlägt beim Fotografieren einen Namen vor. Läuft am Handy, nichts wird hochgeladen. Beim ersten Mal wird das Modell einmalig geladen (etwa 25 MB, am besten im WLAN).</p>
       <button class="gi" data-a="toggleRecog"><span class="grow">Namen aus Foto vorschlagen</span><span class="switch${recogOn() ? ' on' : ''}" role="switch" aria-checked="${recogOn()}"></span></button>
+      <button class="gi" data-a="recogTest">${I.spark}<span class="grow">Fotoerkennung testen<small>Lädt das Modell und zeigt, ob alles funktioniert</small></span></button>
     </div>
     <div class="group"><h3>Datensicherung</h3><p class="p">Alles bleibt nur auf diesem Handy gespeichert. ${bk ? `Letztes Backup: ${fmtDate(bk)}.` : 'Du hast noch kein Backup gemacht.'}</p>
       <button class="gi" data-a="exportBackup">${I.dl}<span class="grow">Backup speichern<small>Eine Datei mit allen Räumen, Dingen und Fotos</small></span></button>
@@ -891,7 +896,7 @@ function manualCode() {
 }
 function stopCam() {
   camOpen = false; clearTimeout(scanTimer);
-  const cam = $('#cam'); cam.hidden = true; cam.classList.remove('scan');
+  const cam = $('#cam'); cam.hidden = true; cam.classList.remove('scan', 'flash');
   try { zxReader?.reset(); } catch {} zxReader = null;
   camStream?.getTracks().forEach(t => t.stop()); camStream = null;
   const v = $('video', cam); if (v.srcObject) { try { v.srcObject.getTracks?.().forEach(t => t.stop()); } catch {} v.srcObject = null; }
@@ -915,7 +920,7 @@ async function addPhotoFrom(src) {
       F.docs.push(id); F.added.push(id); saveDraft(); drawDocs();
     } else if (F) {
       F.photos.push(id); F.added.push(id); saveDraft(); drawPhotos();
-      if (!F.name.trim()) maybeSuggest(id);
+      if (!F.name.trim()) maybeSuggest(id); else drawSugg();
     }
   } catch { toast('Das Foto konnte nicht gelesen werden.'); }
 }
@@ -1101,27 +1106,71 @@ V.inventory = () => {
    ===================================================================== */
 const recogOn = () => lsGet('lager.recog') !== '0';
 let SUG = { state: '', list: [], key: null, msg: '' };
+const recogMod = () => import('./recognize.js');
 function drawSugg() {
   const box = $('#fSugg'); if (!box) return;
-  if (!F || SUG.key !== F.key || !SUG.state) { box.innerHTML = ''; return; }
-  if (SUG.state === 'loading') box.innerHTML = `<span class="sugg-l busy">${I.spark}${esc(SUG.msg || 'Erkenne …')}</span>`;
-  else if (SUG.list.length) box.innerHTML = `<span class="sugg-l">${I.spark}Ist das …?</span>${SUG.list.map(s => `<button type="button" class="chip" data-a="pickSugg" data-n="${esc(s.name)}" data-c="${esc(s.cat || '')}">${esc(s.name)}</button>`).join('')}`;
+  const mine = F && SUG.key === F.key;
+  const st = mine ? SUG.state : '';
+  const again = `<button type="button" class="linkbtn sm" data-a="suggNow">Nochmal</button>`;
+  if (st === 'loading') box.innerHTML = `<span class="sugg-l busy">${I.spark}${esc(SUG.msg || 'Erkenne …')}</span>`;
+  else if (st === 'done' && SUG.list.length) box.innerHTML = `<span class="sugg-l">${I.spark}${SUG.list[0].p < 0.12 ? 'Vielleicht …?' : 'Ist das …?'}</span>${SUG.list.map(s => `<button type="button" class="chip" data-a="pickSugg" data-n="${esc(s.name)}" data-c="${esc(s.cat || '')}">${esc(s.name)}</button>`).join('')}`;
+  else if (st === 'done') box.innerHTML = `<span class="sugg-l">${I.spark}Nichts Passendes erkannt.</span>${again}`;
+  else if (st === 'error') box.innerHTML = `<span class="sugg-l err">${esc(SUG.msg)}</span>${again}`;
+  else if (F?.photos.length && recogOn() && !F.name.trim()) box.innerHTML = `<button type="button" class="chip spark" data-a="suggNow">${I.spark}Namen aus Foto vorschlagen</button>`;
   else box.innerHTML = '';
 }
-async function maybeSuggest(photoId) {
-  if (!recogOn() || !F) return;
+async function maybeSuggest(photoId, manual = false) {
+  if (!F || (!manual && !recogOn())) return;
   const key = F.key;
   SUG = { state: 'loading', list: [], key, msg: 'Erkenne …' }; drawSugg();
+  const show = info => { if (SUG.key === key && SUG.state === 'loading') { SUG.msg = info?.msg || 'Erkenne …'; drawSugg(); } };
   try {
-    const mod = await import('./recognize.js');
+    const mod = await recogMod();
     const p = await DB.get('photos', photoId);
-    const list = await mod.suggest(p.full, msg => { if (SUG.key === key && SUG.state === 'loading') { SUG.msg = msg; drawSugg(); } });
+    if (!p) throw new Error('Foto nicht gefunden');
+    const res = await mod.suggest(p.full, show);
+    lsSet('lager.recogReady', '1');
     if (!F || F.key !== key) return;
-    SUG = { state: 'done', list: F.name.trim() ? [] : list, key }; drawSugg();
+    SUG = { state: 'done', list: F.name.trim() && !manual ? [] : res.list, key }; drawSugg();
   } catch (e) {
-    SUG = { state: '', list: [], key }; drawSugg();
-    if (e?.code !== 'missing') console.warn('Fotoerkennung:', e);
+    console.warn('Fotoerkennung:', e);
+    if (!F || F.key !== key) return;
+    const msg = e?.code === 'missing' ? 'Fotoerkennung ist noch nicht bereit.' : e?.code === 'offline' ? 'Kein Internet – die Fotoerkennung lädt beim ersten Mal das Modell.' : `Fotoerkennung fehlgeschlagen: ${String(e?.message || e).slice(0, 140)}`;
+    SUG = { state: 'error', list: [], key, msg }; drawSugg();
   }
+}
+/* Selbsttest unter Mehr › Fotoerkennung */
+async function recogTest() {
+  openSheet('Fotoerkennung testen', `<p class="muted" style="margin:0 0 10px">Lädt das Modell (beim ersten Mal ca. 25 MB) und erkennt ein Testbild. Wenn etwas schiefgeht, schick mir einen Screenshot davon.</p><ol class="rtlog" id="rtLog"></ol>`,
+    `<button class="btn block" data-a="rtCopy" id="rtCopy" disabled>Ergebnis kopieren</button><button class="btn ghost block" data-a="closeSheet">Schließen</button>`);
+  const t0 = performance.now(), lines = [];
+  const log = (txt, cls = '') => {
+    const s = ((performance.now() - t0) / 1000).toFixed(1);
+    lines.push(`${s}s ${txt}`);
+    const ol = $('#rtLog'); if (!ol) return;
+    const last = ol.lastElementChild;
+    if (cls === 'upd' && last?.classList.contains('upd')) last.textContent = `${s}s  ${txt}`;
+    else { const li = document.createElement('li'); li.className = cls; li.textContent = `${s}s  ${txt}`; ol.append(li); }
+  };
+  log(`Lager ${APP_VER.replace('lager-', '')}, ${navigator.userAgent.match(/(Android [\d.]+|iPhone OS [\d_]+|Windows NT [\d.]+|Mac OS X [\d_]+|Linux)/)?.[0] || 'unbekannt'}, ${(navigator.userAgent.match(/(Chrome|Firefox|Version)\/[\d]+/) || [''])[0]}${navigator.deviceMemory ? `, ${navigator.deviceMemory} GB RAM` : ''}`);
+  log(`Worker: ${'Worker' in window ? 'ja' : 'nein'}, WebAssembly: ${typeof WebAssembly === 'object' ? 'ja' : 'nein'}, online: ${navigator.onLine ? 'ja' : 'nein'}`);
+  try {
+    const mod = await recogMod();
+    const w = await mod.warmUp(info => log(info?.msg || '…', 'upd'));
+    log(`✓ Modell bereit: Variante ${w.meta.dtype}, ${w.via === 'worker' ? 'im Hintergrund' : 'direkt in der Seite'}, ${(w.meta.loadMs / 1000).toFixed(1)} s, ${w.meta.terms} Begriffe`, 'ok');
+    for (const [k, v] of Object.entries(w.meta.errors || {})) log(`(Variante ${k} ging nicht: ${v})`);
+    const c = document.createElement('canvas'); c.width = c.height = 400; const x = c.getContext('2d');
+    x.fillStyle = '#3a6ea5'; x.fillRect(0, 0, 400, 400); x.fillStyle = '#e8b04a'; x.fillRect(80, 130, 240, 140); x.fillStyle = '#222'; x.beginPath(); x.arc(200, 200, 40, 0, 7); x.fill();
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .9));
+    const r = await mod.suggest(blob, info => log(info?.msg || '…', 'upd'));
+    log(`✓ Testbild erkannt in ${(r.ms / 1000).toFixed(1)} s: ${r.list.map(s => `${s.name} ${Math.round(s.p * 100)} %`).join(', ') || 'nichts'}`, 'ok');
+    log('Alles funktioniert. Fotografier jetzt ein echtes Ding und tippe auf den Vorschlag.', 'ok');
+    lsSet('lager.recogReady', '1');
+  } catch (e) {
+    log(`✗ ${e?.message || e}${e?.code ? ` [${e.code}]` : ''}`, 'bad');
+  }
+  const b = $('#rtCopy'); if (b) b.disabled = false;
+  actions.rtCopy = async () => { try { await navigator.clipboard.writeText(lines.join('\n')); toast('Kopiert'); } catch { shareText('Fotoerkennung', lines.join('\n')); } };
 }
 
 /* =====================================================================
@@ -1393,6 +1442,8 @@ const actions = {
   lbSize: el => { LB.size = el.dataset.s; $$('[data-a="lbSize"]').forEach(b => b.classList.toggle('on', b === el)); drawLabels(); },
   print: () => { hydrate($('#view')).then(() => setTimeout(() => window.print(), 150)); },
   invT: el => { INV[el.dataset.k] = !INV[el.dataset.k]; rerender(); },
+  recogTest: () => recogTest(),
+  suggNow: () => { const p = F?.photos[0]; if (p) maybeSuggest(p, true); },
   toggleRecog: () => { lsSet('lager.recog', recogOn() ? '0' : null); rerender(); },
   fDelPhoto: el => { const p = el.dataset.p; F.photos = F.photos.filter(x => x !== p); F.docs = F.docs.filter(x => x !== p); if (F.added.includes(p)) { F.added = F.added.filter(x => x !== p); delPhoto(p); } else F.removed.push(p); saveDraft(); drawPhotos(); drawDocs(); },
   quickPhoto: el => openCam({ itemId: el.dataset.id }),
