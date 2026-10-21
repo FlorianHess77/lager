@@ -345,7 +345,9 @@ export const CLIP_VOCAB = [
   ['a bottle of liqueur', 'Likör', 'Vorrat'],
   ['a bottle of schnapps', 'Schnaps', 'Vorrat'],
   ['a bottle of whisky', 'Whisky', 'Vorrat'],
-  ['a bottle of sparkling wine', 'Sekt', 'Vorrat'],
+  ['a bottle of champagne with a foil wrapped cork and wire cage', 'Sekt', 'Vorrat'],
+  ['a bottle of white wine', 'Weißwein', 'Vorrat'],
+  ['a bottle of red wine', 'Rotwein', 'Vorrat'],
   ['a bottle of mulled wine', 'Glühwein', 'Vorrat'],
   ['a bottle of syrup', 'Sirup', 'Vorrat'],
   // Sanitär
