@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-10-20T21:31:38.477Z",
+  "builtAt": "2026-10-21T19:12:11.844Z",
   "model": "Xenova/mobileclip_s0",
   "eval": {
     "q8": {
@@ -35,6 +35,53 @@
         "Transportbox 0.149"
       ]
     }
+  },
+  "real": {
+    "tested": 39,
+    "top1": 28,
+    "top3": 32,
+    "cases": [
+      "~ Akkuschrauber (A boy with Down syndrome using cordless ): Bohrmaschine 48%, Akkuschrauber 41%, Schlagbohrmaschine 8%",
+      "✓ Akkuschrauber (Panasonic Cordless Drill & Driver EY1DD2): Akkuschrauber 54%, Bohrmaschine 35%, Schlagbohrmaschine 9%",
+      "✓ Hammer (Claw hammer-1.jpg): Hammer 99%, Schraubenschlüssel 0%, Gummihammer 0%",
+      "✓ Hammer (Claw hammer 2.jpg): Hammer 66%, Gummihammer 27%, Spaten 2%",
+      "~ Stehleiter (Ladder aluminum.jpg): Leiter 54%, Stehleiter 46%, Regal 0%",
+      "? Stehleiter: Conversion failed due to unsupported number of channels: 4",
+      "✓ Fahrrad (African boy transporting fodder by bicyc): Fahrrad 84%, Reis 5%, Laufrad 2%",
+      "✓ Fahrrad (Parked bicycle with graffitied building ): Fahrrad 87%, E-Bike 6%, Fahrradschloss 2%",
+      "✗ Toaster (Hoteltoaster 01 (sk).jpg): Raclette 93%, Waffeleisen 4%, Griller 3%",
+      "✓ Toaster (Toaster.png): Toaster 100%, Heizlüfter 0%, Heißluftfritteuse 0%",
+      "✓ Wasserkocher (2023 Czajnik elektryczny Bosch (1).jpg): Wasserkocher 99%, Standmixer 1%, Kaffeemaschine 0%",
+      "✓ Wasserkocher (2023 Czajnik elektryczny N'OVEEN.jpg): Wasserkocher 100%, Kaffeemaschine 0%, Handmixer 0%",
+      "✓ Wein (Schramsberg Vineyards, July 2019-7563+75): Wein 85%, Bier 9%, Weingläser 4%",
+      "✓ Wein (Schramsberg Vineyards, July 2019-7579+75): Wein 62%, Weingläser 32%, Bier 3%",
+      "✗ Staubsauger (RCA ’808’ Power Vacuum Tube.jpg): Glühbirnen 65%, Lampe 26%, Baustrahler 5%",
+      "✗ Staubsauger (Toshiba Vacuum tube Radio.jpg): Radio 100%, Plattenspieler 0%, Lautsprecher 0%",
+      "✓ Rasenmäher (Viking lawn mower.jpg): Rasenmäher 73%, Mähroboter 26%, Rasentrimmer 1%",
+      "✓ Rasenmäher (Philadelphia Lawn Mower • p518 • Scammel): Rasenmäher 80%, Rasentrimmer 9%, Mähroboter 5%",
+      "✓ Gitarre (Harri Stojka 30.08.2008c.jpg): Gitarre 82%, E-Gitarre 12%, Geige 6%",
+      "✗ Gitarre (Man playing an acoustic brazilian guitar): Arbeitshandschuhe 34%, E-Gitarre 10%, Handschuhe 5%",
+      "✓ Koffer (Suitcase (drawing).jpg): Koffer 74%, Reisetasche 26%, Handtasche 0%",
+      "✓ Koffer (Suitcase BW 2025-08-17 14-54-11.jpg): Koffer 71%, Reisetasche 17%, Verbandskasten 5%",
+      "✓ Laptop (IBM Thinkpad R51.jpg): Laptop 100%, Tablet 0%, Bildschirm 0%",
+      "✓ Laptop (Laptop der Marke exone go 20240203 HOF06): Laptop 100%, Tablet 0%, Tastatur 0%",
+      "✗ Schraubenzieher (MacAllister cordless screwdriver 02.jpg): Akkuschrauber 73%, Bohrmaschine 22%, Schlagbohrmaschine 6%",
+      "✓ Schraubenzieher (Black screwdriver.png): Schraubenzieher 85%, Lötkolben 13%, Schraubenzieher-Set 1%",
+      "✓ Pfanne (Pfanne (Edelstahl).jpg): Pfanne 96%, Kochtopf 3%, Rührschüssel 1%",
+      "✗ Pfanne (Frying pan Naxos NAMA20935.jpg): Vase 74%, Hocker 4%, Fahrradhelm 3%",
+      "✓ Zelt (Camping in tent alone under the sky in n): Zelt 99%, Stirnlampe 1%, Schlafsack 0%",
+      "✓ Zelt (Camping tent on tarp.jpg): Zelt 100%, Gaskocher 0%, Campingsessel 0%",
+      "~ Ski (Priit Narusk at Tour de Ski.jpg): Eislaufschuhe 48%, Skischuhe 20%, Ski 11%",
+      "✓ Ski (Quebec Sprint Cross-country Skiing World): Ski 46%, Skischuhe 34%, Rodel 9%",
+      "~ Klopapier (Roll of toilet paper with one sheet fold): Küchenrolle 83%, Klopapier 17%, Windeln 0%",
+      "✓ Klopapier (Toilet Tissue Paper Roll 350 Sheet.jpg): Klopapier 87%, Küchenrolle 12%, Müllsäcke 0%",
+      "✗ Gießkanne (Auguste Renoir - A Girl with a Watering ): Puppe 99%, Staffelei 0%, Kostüm 0%",
+      "✓ Gießkanne (Woman with watering can, Dent de Man.jpg): Gießkanne 57%, Kochtopf 19%, Schubkarre 7%",
+      "✓ Kopfhörer (Headphones on white background.jpg): Kopfhörer 61%, Gehörschutz 39%, Schwimmbrille 0%",
+      "✓ Kopfhörer (Bose QuietComfort 25 Acoustic Noise Canc): Kopfhörer 97%, Gehörschutz 3%, Lautsprecher 0%",
+      "✓ Zange (Tool-pliers.jpg): Zange 93%, Gartenschere 5%, Schraubzwinge 1%",
+      "✓ Zange (2023 Szczypce zaciskowe Morse'a.jpg): Zange 96%, Gartenschere 3%, Schraubzwinge 0%"
+    ]
   },
   "dtype": "fp16",
   "terms": 310,
