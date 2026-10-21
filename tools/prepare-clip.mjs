@@ -80,6 +80,7 @@ const REAL = [['cordless drill', 'Akkuschrauber'], ['claw hammer', 'Hammer'], ['
   ['screwdriver', 'Schraubenzieher'], ['frying pan', 'Pfanne'], ['tent camping', 'Zelt'], ['skis', 'Ski'],
   ['toilet paper roll', 'Klopapier'], ['watering can', 'Gießkanne'], ['headphones', 'Kopfhörer'], ['pliers tool', 'Zange']];
 info.real = { tested: 0, top1: 0, top3: 0, cases: [] };
+const imgVecs = [];
 try {
   const UA = { 'User-Agent': 'LagerApp-Test/1.0 (https://github.com/FlorianHess77/lager)' };
   const processor = await T.AutoProcessor.from_pretrained(MODEL);
@@ -98,11 +99,20 @@ try {
         const byName = new Map(); ex.forEach((x, i) => byName.set(CLIP_VOCAB[i][1], (byName.get(CLIP_VOCAB[i][1]) || 0) + x / sum));
         const top = [...byName].sort((a2, b2) => b2[1] - a2[1]).slice(0, 3);
         const rank = top.findIndex(([n]) => n === want);
+        imgVecs.push([want, v]);
         info.real.tested++; if (rank === 0) info.real.top1++; if (rank >= 0) info.real.top3++;
         info.real.cases.push(`${rank === 0 ? '✓' : rank > 0 ? '~' : '✗'} ${want} (${pg.title.slice(5, 45)}): ${top.map(([n, p]) => `${n} ${Math.round(p * 100)}%`).join(', ')}`);
       }
     } catch (e) { info.real.cases.push(`? ${want}: ${e?.message ?? e}`); }
   }
+  // Foto-zu-Foto-Ähnlichkeit (für die Suche per Foto): gleiches Ding vs. verschiedene Dinge
+  const same = [], diff = [];
+  for (let i = 0; i < imgVecs.length; i++) for (let j = i + 1; j < imgVecs.length; j++) {
+    const d = imgVecs[i][1].reduce((s2, x, k) => s2 + x * imgVecs[j][1][k], 0);
+    (imgVecs[i][0] === imgVecs[j][0] ? same : diff).push(+d.toFixed(3));
+  }
+  const q = (arr, f) => { const a2 = [...arr].sort((x, y) => x - y); return a2[Math.min(a2.length - 1, Math.floor(f * a2.length))]; };
+  info.imageSim = { same: same.sort((a2, b2) => a2 - b2), diffQuantiles: { p50: q(diff, .5), p90: q(diff, .9), p97: q(diff, .97), p99: q(diff, .99), max: q(diff, 1) } };
 } catch (e) { info.real.error = String(e?.message ?? e); }
 
 // nur die gewählte Variante behalten (spart Speicher im Repo)
