@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-10-21T19:12:11.844Z",
+  "builtAt": "2026-10-21T20:40:34.801Z",
   "model": "Xenova/mobileclip_s0",
   "eval": {
     "q8": {
@@ -51,12 +51,12 @@
       "✓ Fahrrad (Parked bicycle with graffitied building ): Fahrrad 87%, E-Bike 6%, Fahrradschloss 2%",
       "✗ Toaster (Hoteltoaster 01 (sk).jpg): Raclette 93%, Waffeleisen 4%, Griller 3%",
       "✓ Toaster (Toaster.png): Toaster 100%, Heizlüfter 0%, Heißluftfritteuse 0%",
-      "✓ Wasserkocher (2023 Czajnik elektryczny Bosch (1).jpg): Wasserkocher 99%, Standmixer 1%, Kaffeemaschine 0%",
+      "✓ Wasserkocher (2023 Czajnik elektryczny Bosch (2).jpg): Wasserkocher 99%, Kaffeemaschine 1%, Standmixer 0%",
       "✓ Wasserkocher (2023 Czajnik elektryczny N'OVEEN.jpg): Wasserkocher 100%, Kaffeemaschine 0%, Handmixer 0%",
       "✓ Wein (Schramsberg Vineyards, July 2019-7563+75): Wein 85%, Bier 9%, Weingläser 4%",
       "✓ Wein (Schramsberg Vineyards, July 2019-7579+75): Wein 62%, Weingläser 32%, Bier 3%",
       "✗ Staubsauger (RCA ’808’ Power Vacuum Tube.jpg): Glühbirnen 65%, Lampe 26%, Baustrahler 5%",
-      "✗ Staubsauger (Toshiba Vacuum tube Radio.jpg): Radio 100%, Plattenspieler 0%, Lautsprecher 0%",
+      "✗ Staubsauger (2023 Air Duster (1).jpg): Föhn 76%, Lötkolben 5%, Kartuschenpistole 4%",
       "✓ Rasenmäher (Viking lawn mower.jpg): Rasenmäher 73%, Mähroboter 26%, Rasentrimmer 1%",
       "✓ Rasenmäher (Philadelphia Lawn Mower • p518 • Scammel): Rasenmäher 80%, Rasentrimmer 9%, Mähroboter 5%",
       "✓ Gitarre (Harri Stojka 30.08.2008c.jpg): Gitarre 82%, E-Gitarre 12%, Geige 6%",
@@ -82,6 +82,36 @@
       "✓ Zange (Tool-pliers.jpg): Zange 93%, Gartenschere 5%, Schraubzwinge 1%",
       "✓ Zange (2023 Szczypce zaciskowe Morse'a.jpg): Zange 96%, Gartenschere 3%, Schraubzwinge 0%"
     ]
+  },
+  "imageSim": {
+    "same": [
+      0.125,
+      0.241,
+      0.268,
+      0.342,
+      0.392,
+      0.401,
+      0.494,
+      0.512,
+      0.513,
+      0.564,
+      0.591,
+      0.673,
+      0.69,
+      0.703,
+      0.725,
+      0.735,
+      0.753,
+      0.826,
+      0.842
+    ],
+    "diffQuantiles": {
+      "p50": 0.152,
+      "p90": 0.317,
+      "p97": 0.421,
+      "p99": 0.526,
+      "max": 0.778
+    }
   },
   "dtype": "fp16",
   "terms": 310,
