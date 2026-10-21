@@ -73,6 +73,38 @@ try {
     } catch (e) { info.eval[dtype] = `Fehler: ${e?.message ?? e}`; }
   }
 } catch (e) { info.evalError = String(e?.message ?? e); }
+// 4. Echte Fotos (Wikimedia Commons) mit der gewählten Variante prüfen: Ist der richtige Name unter den Top 3?
+const REAL = [['cordless drill', 'Akkuschrauber'], ['claw hammer', 'Hammer'], ['step ladder', 'Stehleiter'], ['bicycle', 'Fahrrad'],
+  ['toaster', 'Toaster'], ['electric kettle', 'Wasserkocher'], ['wine bottle', 'Wein'], ['vacuum cleaner', 'Staubsauger'],
+  ['lawn mower', 'Rasenmäher'], ['acoustic guitar', 'Gitarre'], ['suitcase', 'Koffer'], ['laptop computer', 'Laptop'],
+  ['screwdriver', 'Schraubenzieher'], ['frying pan', 'Pfanne'], ['tent camping', 'Zelt'], ['skis', 'Ski'],
+  ['toilet paper roll', 'Klopapier'], ['watering can', 'Gießkanne'], ['headphones', 'Kopfhörer'], ['pliers tool', 'Zange']];
+info.real = { tested: 0, top1: 0, top3: 0, cases: [] };
+try {
+  const UA = { 'User-Agent': 'LagerApp-Test/1.0 (https://github.com/FlorianHess77/lager)' };
+  const processor = await T.AutoProcessor.from_pretrained(MODEL);
+  const vision = await T.CLIPVisionModelWithProjection.from_pretrained(MODEL, { dtype: best.dtype });
+  for (const [q, want] of REAL) {
+    try {
+      const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=2&gsrsearch=${encodeURIComponent('filetype:bitmap ' + q)}&prop=imageinfo&iiprop=url&iiurlwidth=480`;
+      const pages = Object.values((await (await fetch(api, { headers: UA })).json()).query?.pages || {});
+      for (const pg of pages.slice(0, 2)) {
+        const url = pg.imageinfo?.[0]?.thumburl; if (!url) continue;
+        const r = await fetch(url, { headers: UA }); if (!r.ok) continue;
+        const img = await T.RawImage.fromBlob(await r.blob());
+        const v = (await vision(await processor(img))).image_embeds.normalize().tolist()[0];
+        const logits = embeds.map(e => 100 * e.reduce((s2, x, j) => s2 + x * v[j], 0));
+        const mx = Math.max(...logits); const ex = logits.map(l => Math.exp(l - mx)); const sum = ex.reduce((a2, b2) => a2 + b2, 0);
+        const byName = new Map(); ex.forEach((x, i) => byName.set(CLIP_VOCAB[i][1], (byName.get(CLIP_VOCAB[i][1]) || 0) + x / sum));
+        const top = [...byName].sort((a2, b2) => b2[1] - a2[1]).slice(0, 3);
+        const rank = top.findIndex(([n]) => n === want);
+        info.real.tested++; if (rank === 0) info.real.top1++; if (rank >= 0) info.real.top3++;
+        info.real.cases.push(`${rank === 0 ? '✓' : rank > 0 ? '~' : '✗'} ${want} (${pg.title.slice(5, 45)}): ${top.map(([n, p]) => `${n} ${Math.round(p * 100)}%`).join(', ')}`);
+      }
+    } catch (e) { info.real.cases.push(`? ${want}: ${e?.message ?? e}`); }
+  }
+} catch (e) { info.real.error = String(e?.message ?? e); }
+
 // nur die gewählte Variante behalten (spart Speicher im Repo)
 for (const [d, f] of Object.entries(FILES)) if (d !== best.dtype) rmSync(join(dir, 'onnx', f), { force: true });
 info.dtype = best.dtype;
