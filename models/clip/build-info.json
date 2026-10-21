@@ -1,11 +1,11 @@
 {
-  "builtAt": "2026-10-21T20:47:58.645Z",
+  "builtAt": "2026-10-21T20:51:58.293Z",
   "model": "Xenova/mobileclip_s0",
   "eval": {
     "q8": {
       "cats": 0.087,
       "margin": 0.002,
-      "remoteRank": 280,
+      "remoteRank": 282,
       "top": [
         "Yogamatte 0.158",
         "Spaten 0.140",
@@ -53,8 +53,8 @@
       "✓ Toaster (Toaster.png): Toaster 99%, Raclette 0%, Heizlüfter 0%",
       "✓ Wasserkocher (2023 Czajnik elektryczny Bosch (1).jpg): Wasserkocher 99%, Standmixer 1%, Kaffeemaschine 0%",
       "✓ Wasserkocher (2023 Czajnik elektryczny N'OVEEN.jpg): Wasserkocher 100%, Kaffeemaschine 0%, Handmixer 0%",
-      "✓ Wein (Schramsberg Vineyards, July 2019-7563+75): Wein 73%, Bier 12%, Weingläser 6%",
-      "✓ Wein (Schramsberg Vineyards, July 2019-7579+75): Wein 44%, Weingläser 30%, Whisky 8%",
+      "✓ Wein (Schramsberg Vineyards, July 2019-7563+75): Wein 65%, Bier 11%, Weißwein 8%",
+      "✓ Wein (Schramsberg Vineyards, July 2019-7579+75): Wein 35%, Weingläser 23%, Weißwein 22%",
       "✗ Staubsauger (RCA ’808’ Power Vacuum Tube.jpg): Glühbirnen 66%, Lampe 24%, Schreibtischlampe 4%",
       "✗ Staubsauger (2023 Air Duster (1).jpg): Heißluftföhn 91%, Föhn 4%, Druckluftpistole 4%",
       "✓ Rasenmäher (Viking lawn mower.jpg): Rasenmäher 74%, Mähroboter 25%, Rasentrimmer 1%",
@@ -114,6 +114,6 @@
     }
   },
   "dtype": "fp16",
-  "terms": 425,
+  "terms": 427,
   "dim": 512
 }
