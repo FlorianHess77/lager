@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.3.2';
+const APP_VER = 'lager-1.4.0';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -54,6 +54,7 @@ const I = {
   scan: '<svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 9v6 M10 9v6 M13 9v6 M17 9v6"/></svg>',
   qr: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2z M18 18h2v2h-2z M14 18h2 M18 14h2"/></svg>',
   list: '<svg viewBox="0 0 24 24"><path d="M9 6h11 M9 12h11 M9 18h11 M4.5 6h.01 M4.5 12h.01 M4.5 18h.01"/></svg>',
+  drive: '<svg viewBox="0 0 24 24"><path d="M8.5 3.5h7l6 10.5-3.5 6h-12L2.5 14z M8.5 3.5 15 14.5H2.5 M15.5 3.5 9 14.5 M6 20l3-5.5h12.5"/></svg>',
   print: '<svg viewBox="0 0 24 24"><path d="M7 9V3h10v6 M7 17H4v-7h16v7h-3 M7 14h10v7H7z"/></svg>',
   spark: '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>',
   pin: '<svg viewBox="0 0 24 24" class="pin"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z" fill="currentColor" stroke="none" opacity=".9"/><circle cx="12" cy="9.5" r="2.6" fill="var(--card)"/></svg>',
@@ -63,15 +64,16 @@ const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="2" y="2" widt
 /* =====================================================================
    Datenbank (IndexedDB, Rückfall: Arbeitsspeicher)
    ===================================================================== */
+let dataVer = 0; // steigt bei jeder Änderung – ein vorbereitetes Backup ist dann veraltet
 const DB = {
   db: null, mem: null,
   open() {
     return new Promise(res => {
       let req;
-      try { req = indexedDB.open('lager', 1); } catch { this.mem = {}; return res(); }
+      try { req = indexedDB.open('lager', 2); } catch { this.mem = {}; return res(); }
       req.onupgradeneeded = () => {
         const d = req.result;
-        for (const s of ['rooms', 'items', 'photos']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
+        for (const s of ['rooms', 'items', 'photos', 'vecs']) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
       };
       req.onsuccess = () => { this.db = req.result; res(); };
       req.onerror = req.onblocked = () => { this.mem = {}; res(); };
@@ -87,10 +89,10 @@ const DB = {
   },
   all(s) { return this.mem ? Promise.resolve([...this._m(s).values()]) : this.tx(s, 'readonly', st => st.getAll()); },
   get(s, id) { return this.mem ? Promise.resolve(this._m(s).get(id)) : this.tx(s, 'readonly', st => st.get(id)); },
-  put(s, o) { if (this.mem) { this._m(s).set(o.id, o); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.put(o)); },
-  del(s, id) { if (this.mem) { this._m(s).delete(id); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.delete(id)); },
+  put(s, o) { if (s !== 'vecs') dataVer++; if (this.mem) { this._m(s).set(o.id, o); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.put(o)); },
+  del(s, id) { if (s !== 'vecs') dataVer++; if (this.mem) { this._m(s).delete(id); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.delete(id)); },
   keys(s) { return this.mem ? Promise.resolve([...this._m(s).keys()]) : this.tx(s, 'readonly', st => st.getAllKeys()); },
-  clear(s) { if (this.mem) { this._m(s).clear(); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.clear()); },
+  clear(s) { if (s !== 'vecs') dataVer++; if (this.mem) { this._m(s).clear(); return Promise.resolve(); } return this.tx(s, 'readwrite', st => st.clear()); },
 };
 
 const S = { rooms: [], items: [] };
@@ -127,6 +129,7 @@ async function saveItem(it) {
   if (room && it.place && !(room.places || []).some(p => p.toLowerCase() === it.place.toLowerCase())) {
     room.places = [...(room.places || []), it.place]; await saveRoom(room);
   }
+  if (it.photos?.length) indexSoon();
   if (!lsGet('lager.persist')) { lsSet('lager.persist', '1'); navigator.storage?.persist?.().catch(() => {}); }
 }
 async function removeItem(id, keepPhotos) {
@@ -295,7 +298,7 @@ V.home = () => {
     exp ? `<a class="pill" href="#/lists/exp"><span class="dot exp"></span>${plural(exp, 'Ding läuft', 'Dinge laufen')} bald ab</a>` : '',
     war ? `<a class="pill" href="#/lists/war"><span class="dot war"></span>${plural(war, 'Garantie endet', 'Garantien enden')} bald</a>` : '',
     lent ? `<a class="pill" href="#/lists/lent"><span class="dot lent"></span>${plural(lent, 'Ding', 'Dinge')} verliehen</a>` : '',
-    bkDue ? `<a class="pill" href="#/more"><span class="dot bk"></span>Backup machen</a>` : '',
+    bkDue ? `<a class="pill" href="#/more"><span class="dot bk"></span>Backup auf Google Drive machen</a>` : '',
   ].join('');
   const recent = S.items.slice().sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 10);
   return {
@@ -306,7 +309,7 @@ V.home = () => {
       <div class="sum"><b>${plural(nItems, 'Ding', 'Dinge')}</b>${pieces !== nItems ? `${pieces.toLocaleString('de-AT')} Stück, ` : ''}${plural(S.rooms.length, 'Raum', 'Räume')}</div>
     </header>
     ${installBanner()}
-    <div class="tape"><a class="tape-link" href="#/search?focus=1">${I.search}<span class="ph">Wo ist …?</span></a><button class="tbtn" data-a="scanAny" aria-label="QR-Aufkleber oder Barcode scannen">${I.scan}</button></div>
+    <div class="tape"><a class="tape-link" href="#/search?focus=1">${I.search}<span class="ph">Wo ist …?</span></a><button class="tbtn" data-a="photoSearch" aria-label="Mit Foto suchen">${I.cam}</button><button class="tbtn" data-a="scanAny" aria-label="QR-Aufkleber oder Barcode scannen">${I.scan}</button></div>
     ${notes ? `<div class="notes">${notes}</div>` : ''}
     <div class="plan-head"><h2>Räume</h2><span class="sub">Tippe auf eine Karte</span></div>
     ${cardStack()}
@@ -572,7 +575,7 @@ async function saveForm(next) {
   for (const p of F.removed) await delPhoto(p);
   lsSet('lager.lastRoom', it.roomId); lsSet('lager.lastPlace', it.place);
   const roomId = it.roomId, place = it.place;
-  F = null; lsSet(DRAFT, null);
+  F = null; lsSet(DRAFT, null); SUG = { state: '' };
   if (next) {
     toast(`${name} eingeräumt`);
     location.replace(`#/edit/new?room=${roomId}&place=${encodeURIComponent(place)}&n=${Date.now()}`);
@@ -583,7 +586,7 @@ async function saveForm(next) {
 }
 async function cancelEdit() {
   if (F) { for (const p of F.added) await delPhoto(p); }
-  F = null; lsSet(DRAFT, null);
+  F = null; lsSet(DRAFT, null); SUG = { state: '' };
   history.length > 1 ? history.back() : (location.hash = '#/');
 }
 
@@ -598,6 +601,7 @@ V.search = (_, q) => {
     html: `<h1 class="big-h">Wo ist …?</h1>
     <div class="tape tape-search">${I.search}<input id="sq" type="search" placeholder="Name, Schlagwort, Platz …" value="${esc(SQ.q)}" autocomplete="off" enterkeyhint="search" aria-label="Suchen">
       <button class="tbtn" data-a="voice" aria-label="Spracheingabe" ${('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) ? '' : 'hidden'}>${I.mic}</button>
+      <button class="tbtn" data-a="photoSearch" aria-label="Mit Foto suchen">${I.cam}</button>
       <button class="tbtn" data-a="scanAny" aria-label="QR-Aufkleber oder Barcode scannen">${I.scan}</button></div>
     <div class="chip-row">${filters.map(([k, l]) => `<button class="chip${SQ.filter === k ? ' on' : ''}" data-a="sFilter" data-f="${k}">${l}</button>`).join('')}
       ${S.rooms.map(r => `<button class="chip${SQ.room === r.id ? ' on' : ''}" style="--c:${r.color}" data-a="sRoom" data-id="${r.id}">${r.icon || ''} ${esc(r.name)}</button>`).join('')}</div>
@@ -687,19 +691,25 @@ V.more = () => {
       <a class="gi" href="#/labels">${I.qr}<span class="grow">QR-Aufkleber für Kisten und Regale<small>Scannen zeigt sofort, was drin ist</small></span></a>
       <a class="gi" href="#/inventory">${I.print}<span class="grow">Inventarliste als PDF<small>Mit Fotos und Wert, z. B. für die Versicherung</small></span></a>
     </div>
-    <div class="group"><h3>Fotoerkennung</h3><p class="p">Schlägt beim Fotografieren einen Namen vor. Läuft am Handy, nichts wird hochgeladen. Beim ersten Mal wird das Modell einmalig geladen (etwa 25 MB, am besten im WLAN).</p>
+    <div class="group"><h3>Fotoerkennung</h3><p class="p">Schlägt beim Fotografieren einen Namen vor und macht die Suche per Foto möglich. Läuft am Handy, nichts wird hochgeladen. Beim ersten Mal wird das Modell einmalig geladen (etwa 25 MB, am besten im WLAN).</p>
       <button class="gi" data-a="toggleRecog"><span class="grow">Namen aus Foto vorschlagen</span><span class="switch${recogOn() ? ' on' : ''}" role="switch" aria-checked="${recogOn()}"></span></button>
       <button class="gi" data-a="recogTest">${I.spark}<span class="grow">Fotoerkennung testen<small>Lädt das Modell und zeigt, ob alles funktioniert</small></span></button>
     </div>
     <div class="group"><h3>Datensicherung</h3><p class="p">Alles bleibt nur auf diesem Handy gespeichert. ${bk ? `Letztes Backup: ${fmtDate(bk)}.` : 'Du hast noch kein Backup gemacht.'}</p>
-      <button class="gi" data-a="exportBackup">${I.dl}<span class="grow">Backup speichern<small>Eine Datei mit allen Räumen, Dingen und Fotos</small></span></button>
-      <button class="gi" data-a="importBackup">${I.ul}<span class="grow">Backup laden<small>Ersetzt die Daten auf diesem Gerät</small></span></button>
+      <button class="gi hi" data-a="shareBackup">${I.drive}<span class="grow">Auf Google Drive sichern<small>Im Teilen-Menü „Drive“ wählen – oder per Mail schicken</small></span><span class="bk-state" id="bkState"></span></button>
+      <button class="gi" data-a="exportBackup">${I.dl}<span class="grow">Als Datei speichern<small>Landet im Download-Ordner</small></span></button>
+      <button class="gi" data-a="importBackup">${I.ul}<span class="grow">Backup laden<small>Aus Google Drive oder Downloads – ersetzt die Daten auf diesem Gerät</small></span></button>
     </div>
     <div class="group">
       ${isStandalone() ? '' : `<button class="gi" data-a="installApp">${I.phone}<span class="grow">App installieren<small>Startet dann ohne Browserleiste, auch offline</small></span></button>`}
       <button class="gi danger" data-a="wipe">${I.trash}<span class="grow">Alles löschen</span></button>
     </div>
     <p class="meta" style="text-align:center">Lager ${APP_VER.replace('lager-', '')}${DB.mem ? ' · Vorschau ohne dauerhaften Speicher' : ''}</p>`,
+    after() {
+      // Backup schon jetzt bauen, damit „Auf Google Drive sichern“ sofort teilen kann
+      const st = $('#bkState'); if (st) st.textContent = 'wird vorbereitet …';
+      prepShare().then(r => { const s = $('#bkState'); if (s) s.textContent = mb(r.blob.size); }).catch(() => { const s = $('#bkState'); if (s) s.textContent = ''; });
+    },
   };
 };
 
@@ -722,7 +732,7 @@ function render() {
   const v = parts[0] || 'home';
   if (v !== 'room' && !(prevView === 'room' && v === 'item')) roomFilter = '';
   // Formular verlassen (z. B. mit der Zurück-Taste) = Entwurf verwerfen
-  if (v !== 'edit' && (F || prevView === 'edit')) { F = null; lsSet(DRAFT, null); }
+  if (v !== 'edit' && (F || prevView === 'edit')) { if (F) for (const p of F.added) delPhoto(p); F = null; lsSet(DRAFT, null); SUG = { state: '' }; }
   let out;
   switch (v) {
     case 'room': out = V.room(parts[1]); break;
@@ -732,6 +742,7 @@ function render() {
     case 'inventory': out = V.inventory(); break;
     case 'edit': out = S.rooms.length ? V.edit(parts[1] === 'new' ? null : parts[1], q) : V.welcome(); break;
     case 'search': out = V.search(null, q); break;
+    case 'photo': out = V.photo(); break;
     case 'lists': out = V.lists(parts[1]); break;
     case 'more': out = V.more(); break;
     default: out = V.home();
@@ -845,7 +856,7 @@ async function openCam(target) {
     if (e?.name === 'NotAllowedError') toast('Kein Kamerazugriff – öffne die Kamera-App stattdessen.');
     $('#fileCam').click(); return;
   }
-  showCam('photo', target?.docs ? 'Rechnung oder Kassenbon flach hinlegen' : '');
+  showCam('photo', target?.docs ? 'Rechnung oder Kassenbon flach hinlegen' : target?.search ? 'Das gesuchte Ding fotografieren' : '');
 }
 async function openScanner(cb, hint = 'QR-Aufkleber oder Strichcode in den Rahmen halten') {
   scanCb = cb;
@@ -912,6 +923,10 @@ async function camShot() {
   await addPhotoFrom(c);
 }
 async function addPhotoFrom(src) {
+  if (camTarget?.search) { // Suche per Foto: nichts speichern, nur vergleichen
+    const blob = src instanceof Blob ? src : await new Promise(r => src.toBlob(r, 'image/jpeg', .88));
+    runPhotoSearch(blob); return;
+  }
   try {
     const id = await storePhoto(src);
     if (camTarget?.itemId) { // Foto direkt beim Ding
@@ -927,7 +942,7 @@ async function addPhotoFrom(src) {
 for (const sel of ['#filePick', '#fileCam']) {
   $(sel).addEventListener('change', async e => {
     const files = [...e.target.files]; e.target.value = '';
-    for (const f of files) await addPhotoFrom(f);
+    for (const f of camTarget?.search ? files.slice(0, 1) : files) await addPhotoFrom(f);
   });
 }
 $('#filePick').multiple = true;
@@ -1113,7 +1128,12 @@ function drawSugg() {
   const st = mine ? SUG.state : '';
   const again = `<button type="button" class="linkbtn sm" data-a="suggNow">Nochmal</button>`;
   if (st === 'loading') box.innerHTML = `<span class="sugg-l busy">${I.spark}${esc(SUG.msg || 'Erkenne …')}</span>`;
-  else if (st === 'done' && SUG.list.length) box.innerHTML = `<span class="sugg-l">${I.spark}${SUG.list[0].p < 0.12 ? 'Vielleicht …?' : 'Ist das …?'}</span>${SUG.list.map(s => `<button type="button" class="chip" data-a="pickSugg" data-n="${esc(s.name)}" data-c="${esc(s.cat || '')}">${esc(s.name)}</button>`).join('')}`;
+  else if (st === 'done' && SUG.list.length) {
+    const d = SUG.dup && itemById(SUG.dup);
+    box.innerHTML = (d ? `<div class="dup">${thumb(d)}<span class="grow">Gleiches Ding? Dein <b>${esc(d.name)}</b> liegt in ${esc(where(d))}${Number(d.qty) !== 1 ? ` (${d.qty} Stück)` : ''}.</span><button type="button" class="btn sm" data-a="dupPlus" data-id="${d.id}">Menge +1</button></div>` : '')
+      + `<span class="sugg-l">${I.spark}${SUG.list[0].own || SUG.list[0].p >= 0.12 ? 'Ist das …?' : 'Vielleicht …?'}</span>${SUG.list.map(s => `<button type="button" class="chip${s.own ? ' own' : ''}" data-a="pickSugg" data-n="${esc(s.name)}" data-c="${esc(s.cat || '')}"${s.own ? ` data-own="${s.own}" title="Wie dein Ding in ${esc(where(itemById(s.own)))}"` : ''}>${esc(s.name)}</button>`).join('')}`;
+    hydrate(box);
+  }
   else if (st === 'done') box.innerHTML = `<span class="sugg-l">${I.spark}Nichts Passendes erkannt.</span>${again}`;
   else if (st === 'error') box.innerHTML = `<span class="sugg-l err">${esc(SUG.msg)}</span>${again}`;
   else if (F?.photos.length && recogOn() && !F.name.trim()) box.innerHTML = `<button type="button" class="chip spark" data-a="suggNow">${I.spark}Namen aus Foto vorschlagen</button>`;
@@ -1128,10 +1148,25 @@ async function maybeSuggest(photoId, manual = false) {
     const mod = await recogMod();
     const p = await DB.get('photos', photoId);
     if (!p) throw new Error('Foto nicht gefunden');
-    const res = await mod.suggest(p.full, show);
+    const res = await mod.query(p.full, show);
     lsSet('lager.recogReady', '1');
     if (!F || F.key !== key) return;
-    SUG = { state: 'done', list: F.name.trim() && !manual ? [] : res.list, key }; drawSugg();
+    // eigene Dinge, die so ähnlich aussehen: deren Namen zuerst vorschlagen (die Erkennung lernt so mit)
+    await loadVecs();
+    const own = [];
+    for (const it of S.items) {
+      if (it.id === F.id) continue;
+      let s = 0;
+      for (const pid of it.photos || []) { const v = VEC.get(pid); if (v) for (const q of res.vecs) s = Math.max(s, dot(q, v)); }
+      if (!s) continue;
+      if (s >= 0.72) own.push({ it, s });
+    }
+    own.sort((x, y) => y.s - x.s);
+    const list = [], seen = new Set();
+    for (const o of own) { const k = norm(o.it.name); if (!seen.has(k) && list.length < 2) { seen.add(k); list.push({ name: o.it.name, cat: '', p: o.s, own: o.it.id }); } }
+    for (const g of res.list) { const k = norm(g.name); if (!seen.has(k) && list.length < 4) { seen.add(k); list.push(g); } }
+    SUG = { state: 'done', list: F.name.trim() && !manual ? [] : list, dup: own[0]?.s >= 0.85 && !F.id ? own[0].it.id : null, key }; drawSugg();
+    indexSoon();
   } catch (e) {
     console.warn('Fotoerkennung:', e);
     if (!F || F.key !== key) return;
@@ -1139,6 +1174,123 @@ async function maybeSuggest(photoId, manual = false) {
     SUG = { state: 'error', list: [], key, msg }; drawSugg();
   }
 }
+/* =====================================================================
+   Suche per Foto: ähnliche Dinge aus dem eigenen Lager
+   ===================================================================== */
+let VEC = null;          // Foto-ID → Bild-Fingerabdruck (normiert)
+let indexRun = null, indexTimer = null;
+let PS = { state: '' };  // aktuelle Foto-Suche
+// Gemessen an echten Fotos: verschiedene Dinge (gleicher Boden, gleiches Licht) liegen meist unter 0,55,
+// ein neues Foto vom gleichen Ding meist darüber. Ähnliche Dinge (zwei Weine) erreichen auch 0,7–0,9.
+const SIMS = [[0.85, 'fast gleich'], [0.7, 'sehr ähnlich'], [0.55, 'ähnlich'], [0.45, 'entfernt ähnlich']];
+const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+async function loadVecs() { if (!VEC) VEC = new Map((await DB.all('vecs')).map(x => [x.id, x.v])); return VEC; }
+async function ensureVecs(onProgress) {
+  while (indexRun) await indexRun.catch(() => {});
+  indexRun = (async () => {
+    await loadVecs();
+    const todo = [...new Set(S.items.flatMap(i => i.photos || []).filter(p => !VEC.has(p)))];
+    if (!todo.length) return;
+    const mod = await recogMod();
+    for (const [n, id] of todo.entries()) {
+      onProgress?.({ msg: `Lerne deine Fotos kennen … ${n + 1} von ${todo.length}` });
+      const p = await DB.get('photos', id); if (!p) continue;
+      const v = await mod.embed(p.thumb || p.full);
+      VEC.set(id, v); await DB.put('vecs', { id, v });
+    }
+  })();
+  try { await indexRun; } finally { indexRun = null; }
+}
+// neue Fotos still im Hintergrund erfassen – nur wenn die Erkennung schon einmal geladen wurde
+function indexSoon() {
+  clearTimeout(indexTimer);
+  if (!recogOn() || !lsGet('lager.recogReady')) return;
+  indexTimer = setTimeout(() => ensureVecs().catch(e => console.warn('Foto-Index:', e)), 4000);
+}
+function simLabel(s) { return (SIMS.find(([t]) => s >= t) || [0, ''])[1]; }
+async function runPhotoSearch(blob) {
+  if (PS.url) URL.revokeObjectURL(PS.url);
+  PS = { blob, url: URL.createObjectURL(blob), state: 'loading', msg: 'Lade Fotoerkennung …', results: [], guesses: [] };
+  if (location.hash.startsWith('#/photo')) rerender(); else location.hash = '#/photo';
+  const me = PS;
+  const show = info => { if (PS === me && PS.state === 'loading') { PS.msg = info?.msg || PS.msg; drawPS(); } };
+  try {
+    const mod = await recogMod();
+    const q = await mod.query(blob, show);
+    lsSet('lager.recogReady', '1');
+    if (PS !== me) return;
+    PS.guesses = q.list || [];
+    await ensureVecs(show);
+    if (PS !== me) return;
+    PS.results = rankSimilar(q.vecs, PS.guesses);
+    PS.state = 'done';
+  } catch (e) {
+    console.warn('Foto-Suche:', e);
+    if (PS !== me) return;
+    PS.state = 'error';
+    PS.msg = e?.code === 'missing' ? 'Fotoerkennung ist noch nicht bereit.' : e?.code === 'offline' ? 'Kein Internet – beim ersten Mal lädt die Fotoerkennung das Modell (ca. 25 MB).' : `Das hat nicht geklappt: ${String(e?.message || e).slice(0, 160)}`;
+  }
+  drawPS();
+}
+function rankSimilar(qvecs, guesses) {
+  const out = [];
+  const gNames = guesses.filter(g => g.p >= 0.05).map(g => ({ n: norm(g.name), p: g.p }));
+  for (const it of S.items) {
+    let sim = 0;
+    for (const pid of it.photos || []) { const v = VEC.get(pid); if (v) for (const q of qvecs) sim = Math.max(sim, dot(q, v)); }
+    // ohne passendes Foto: über den erkannten Namen finden
+    const hay = ' ' + norm(it.name + ' ' + (it.tags || []).join(' ')) + ' ';
+    let byName = 0;
+    for (const g of gNames) if (g.n.length >= 3 && (hay.includes(' ' + g.n) || norm(it.name).includes(g.n))) byName = Math.max(byName, 0.46 + 0.35 * g.p);
+    const score = Math.max(sim, byName);
+    if (score >= SIMS[SIMS.length - 1][0]) out.push({ it, sim, byName, score });
+  }
+  out.sort((a, b) => b.score - a.score);
+  // alles ab „ähnlich“; „entfernt ähnlich“ nur zum Auffüllen, damit immer ein paar Kandidaten da sind
+  return out.filter((r, i) => r.score >= SIMS[2][0] || i < 6).slice(0, 20);
+}
+function drawPS() {
+  const box = $('#psBody'); if (!box) return;
+  const g = $('#psGuess');
+  if (g) g.innerHTML = PS.state === 'done' && PS.guesses.length
+    ? `<span class="sugg-l">${I.spark}Sieht aus wie</span><span class="chips">${PS.guesses.slice(0, 3).map(x => `<button class="chip" data-a="psGuess" data-n="${esc(x.name)}">${esc(x.name)}</button>`).join('')}</span>`
+    : PS.state === 'loading' ? `<span class="sugg-l busy">${I.spark}${esc(PS.msg)}</span>` : '';
+  if (PS.state === 'loading') { box.innerHTML = `<div class="ps-wait"><span class="spin"></span>${esc(PS.msg)}</div>`; return; }
+  if (PS.state === 'error') { box.innerHTML = `<div class="note-box err">${esc(PS.msg)}</div><button class="btn block" data-a="psRetry">Nochmal versuchen</button>`; return; }
+  if (PS.state !== 'done') { box.innerHTML = ''; return; }
+  const add = `<div class="ps-add"><span>Nicht dabei?</span><button class="btn primary" data-a="psAdd">${I.plus}Als neues Ding einräumen</button></div>`;
+  if (!PS.results.length) {
+    box.innerHTML = emptyBox('Nichts Ähnliches im Lager', S.items.some(i => i.photos?.length) ? 'Keins deiner Dinge sieht so aus. Vielleicht ist es noch nicht eingeräumt – oder hat noch kein Foto.' : 'Deine Dinge haben noch keine Fotos. Die Suche vergleicht mit den Fotos deiner Dinge – je mehr Fotos, desto besser.') + add;
+    return;
+  }
+  const sub = r => `<span class="sim${r.sim >= 0.7 ? ' hi' : ''}">${r.sim >= r.byName ? simLabel(r.sim) : 'Name passt'}</span><span class="t"> · ${esc(where(r.it))}</span>`;
+  box.innerHTML = `<p class="count">${plural(PS.results.length, 'Treffer', 'Treffer')} – das Ähnlichste zuerst</p><ul class="list">${PS.results.map(r => itemRow(r.it, { sub: sub(r) })).join('')}</ul>${add}`;
+  hydrate(box);
+}
+V.photo = () => ({
+  tab: 'search',
+  html: `<div class="pagebar"><button class="icbtn" data-a="goBack" aria-label="Zurück">${I.back}</button><h1>Suche per Foto</h1><span style="width:42px"></span></div>
+    ${PS.url ? `<div class="ps-head"><button class="ps-img" data-a="psView" aria-label="Suchfoto groß anzeigen"><img src="${PS.url}" alt="Dein Suchfoto"></button>
+      <div class="ps-side"><div id="psGuess" class="ps-guess"></div><div class="ps-btns"><button class="btn" data-a="photoSearch">${I.cam}Neues Foto</button><button class="btn ghost" data-a="psGallery">${I.img}Galerie</button></div></div></div>
+      <div id="psBody"></div>`
+    : `${emptyBox('Was suchst du?', 'Fotografier ein Ding – die App zeigt dir, was in deinem Lager ähnlich aussieht und wo es liegt.')}
+      <div class="row"><button class="btn primary" data-a="photoSearch">${I.cam}Foto aufnehmen</button><button class="btn" data-a="psGallery">${I.img}Aus Galerie</button></div>`}`,
+  after() { drawPS(); },
+});
+async function addFromSearch() {
+  if (!PS.blob || !S.rooms.length) return;
+  const id = await storePhoto(PS.blob);
+  let roomId = lsGet('lager.lastRoom'); if (!roomById(roomId)) roomId = S.rooms[0].id;
+  F = { key: 'new', id: null, name: '', roomId, place: '', qty: 1, min: '', tags: '', note: '', lentTo: '', photos: [id], docs: [], expires: '', bought: '', price: '', warranty: '', barcode: '', added: [id], removed: [] };
+  saveDraft();
+  // eigene ähnliche Dinge zuerst vorschlagen, dann die erkannten Namen
+  const own = PS.results.filter(r => r.sim >= 0.72).slice(0, 2).map(r => ({ name: r.it.name, cat: '', p: r.sim, own: r.it.id }));
+  const seen = new Set(own.map(o => norm(o.name)));
+  const list = [...own, ...PS.guesses.filter(g => !seen.has(norm(g.name))).slice(0, 4 - own.length)];
+  SUG = { state: list.length ? 'done' : '', list, dup: PS.results[0]?.sim >= 0.85 ? PS.results[0].it.id : null, key: 'new' };
+  location.hash = '#/edit/new?nofocus=1&n=' + Date.now();
+}
+
 /* Selbsttest unter Mehr › Fotoerkennung */
 async function recogTest() {
   openSheet('Fotoerkennung testen', `<p class="muted" style="margin:0 0 10px">Lädt das Modell (beim ersten Mal ca. 25 MB) und erkennt ein Testbild. Wenn etwas schiefgeht, schick mir einen Screenshot davon.</p><ol class="rtlog" id="rtLog"></ol>`,
@@ -1295,35 +1447,66 @@ function resetZoom() {
    ===================================================================== */
 const blobToData = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
 const dataToBlob = async d => (await fetch(d)).blob();
-async function exportBackup() {
-  toast('Backup wird erstellt …', null, null, 10000);
+async function backupBlob() {
   const photos = {};
   for (const id of await DB.keys('photos')) {
     const p = await DB.get('photos', id);
     if (p) photos[id] = { full: await blobToData(p.full), thumb: p.thumb ? await blobToData(p.thumb) : null };
   }
   const data = { app: 'lager', version: 1, exported: new Date().toISOString(), rooms: S.rooms, items: S.items, photos };
-  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-  const name = `lager-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  const file = new File([blob], name, { type: 'application/json' });
-  let shared = false;
-  if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer:coarse)').matches) {
-    try { await navigator.share({ files: [file], title: 'Lager-Backup' }); shared = true; } catch (e) { if (e?.name === 'AbortError') { $('#toast').hidden = true; return; } }
-  }
-  if (!shared) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-  lsSet('lager.backupAt', String(Date.now()));
-  toast(`Backup gespeichert (${(blob.size / 1048576).toFixed(1).replace('.', ',')} MB)`);
-  rerender();
+  return new Blob([JSON.stringify(data)], { type: 'text/plain' });
+}
+const bkBase = () => `lager-backup-${isoDay(new Date())}`;
+const mb = n => (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+/* Teilen braucht einen frischen Fingertipp: Chrome erlaubt navigator.share nur kurz nach dem Antippen.
+   Das Backup (mit Fotos) zu bauen dauert länger – darum wird es beim Öffnen von „Mehr“ vorbereitet.
+   Chrome teilt .json-Dateien nicht (meldet „erlaubt“, lehnt dann ab) – darum als .txt; Laden liest beides. */
+let sharePrep = null;
+function prepShare() {
+  if (sharePrep && sharePrep.v === dataVer) return sharePrep.p;
+  const v = dataVer;
+  const p = backupBlob().then(blob => {
+    const file = new File([blob], bkBase() + '.txt', { type: 'text/plain' });
+    let can = false; try { can = !!navigator.canShare?.({ files: [file] }); } catch {}
+    return { blob, file: can ? file : null };
+  });
+  sharePrep = { v, p, ready: null };
+  p.then(r => { if (sharePrep?.p === p) sharePrep.ready = r; }).catch(() => { sharePrep = null; });
+  return p;
+}
+function backupDone(how, size) { lsSet('lager.backupAt', String(Date.now())); toast(`${how} (${mb(size)})`); if ((parseHash().parts[0] || '') === 'more') rerender(); }
+function saveBackupFile(r) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.blob], { type: 'application/json' })); a.download = bkBase() + '.json';
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  backupDone('Backup gespeichert (Downloads)', r.blob.size);
+}
+async function doShare(r) {
+  if (!r.file) { toast('Teilen geht hier nicht – Backup wird als Datei gespeichert.'); saveBackupFile(r); return; }
+  try { await navigator.share({ files: [r.file], title: 'Lager-Backup' }); backupDone('Backup geteilt', r.blob.size); }
+  catch (e) { if (e?.name === 'AbortError') return; console.warn(e); toast(`Teilen ging nicht (${e?.name || e})`, 'Als Datei speichern', () => saveBackupFile(r), 8000); }
+}
+async function shareBackup() {
+  const ready = sharePrep && sharePrep.v === dataVer && sharePrep.ready;
+  if (ready) { doShare(ready); return; }
+  toast('Backup wird vorbereitet …', null, null, 60000);
+  let r; try { r = await prepShare(); } catch (e) { toast('Backup konnte nicht erstellt werden: ' + (e?.message || e)); return; }
+  // der Fingertipp ist inzwischen „abgelaufen“ – kurz nochmal tippen lassen
+  toast(`Backup ist bereit (${mb(r.blob.size)})`, 'Jetzt teilen', () => doShare(r), 20000);
+}
+async function exportBackup() {
+  toast('Backup wird erstellt …', null, null, 60000);
+  try { saveBackupFile(await prepShare()); } catch (e) { toast('Backup konnte nicht erstellt werden: ' + (e?.message || e)); }
 }
 $('#fileBackup').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  let data; try { data = JSON.parse(await f.text()); } catch { toast('Diese Datei ist kein Lager-Backup.'); return; }
+  let data; try { data = JSON.parse((await f.text()).replace(/^\uFEFF/, '').trim()); } catch { toast('Diese Datei ist kein Lager-Backup.'); return; }
   if (data?.app !== 'lager' || !Array.isArray(data.rooms) || !Array.isArray(data.items)) { toast('Diese Datei ist kein Lager-Backup.'); return; }
   const ok = await ask('Backup laden?', `Das Backup enthält ${plural(data.rooms.length, 'Raum', 'Räume')} und ${plural(data.items.length, 'Ding', 'Dinge')}. Was jetzt auf diesem Gerät ist, wird ersetzt.`, 'Backup laden', true);
   if (!ok) return;
   await closeSheet();
   toast('Backup wird geladen …', null, null, 20000);
-  for (const s of ['rooms', 'items', 'photos']) await DB.clear(s);
+  for (const s of ['rooms', 'items', 'photos', 'vecs']) await DB.clear(s);
+  VEC = null;
   for (const k of [...urlCache.values()]) URL.revokeObjectURL(k); urlCache.clear();
   for (const r of data.rooms) await DB.put('rooms', r);
   for (const it of data.items) await DB.put('items', it);
@@ -1409,7 +1592,7 @@ const actions = {
     const qs = new URLSearchParams(); if (room) qs.set('room', room); if (el.dataset.place != null && el.dataset.place !== '') qs.set('place', el.dataset.place);
     else if (room) qs.set('place', '');
     qs.set('n', Date.now());
-    F = null; lsSet(DRAFT, null);
+    F = null; lsSet(DRAFT, null); SUG = { state: '' };
     go('#/edit/new?' + qs);
   },
   cancelEdit: () => cancelEdit(),
@@ -1431,8 +1614,11 @@ const actions = {
   }, 'Strichcode in den Rahmen halten'); },
   pickSugg: el => {
     F.name = el.dataset.n; $('#fName').value = F.name;
-    const c = el.dataset.c; const tags = F.tags.split(',').map(t => t.trim()).filter(Boolean);
-    if (c && !tags.some(t => t.toLowerCase() === c.toLowerCase())) { tags.push(c); F.tags = tags.join(', '); $('#fTags').value = F.tags; }
+    const ownIt = el.dataset.own && itemById(el.dataset.own);
+    const add = ownIt ? (ownIt.tags || []) : el.dataset.c ? [el.dataset.c] : [];
+    const tags = F.tags.split(',').map(t => t.trim()).filter(Boolean);
+    for (const c of add) if (!tags.some(t => t.toLowerCase() === c.toLowerCase())) tags.push(c);
+    F.tags = tags.join(', '); $('#fTags').value = F.tags;
     saveDraft(); SUG.state = ''; drawSugg();
   },
   viewDocs: el => openViewer(itemById(el.dataset.id)?.docs, Number(el.dataset.i) || 0),
@@ -1443,6 +1629,20 @@ const actions = {
   print: () => { hydrate($('#view')).then(() => setTimeout(() => window.print(), 150)); },
   invT: el => { INV[el.dataset.k] = !INV[el.dataset.k]; rerender(); },
   recogTest: () => recogTest(),
+  dupPlus: async el => {
+    const it = itemById(el.dataset.id); if (!it) return;
+    it.qty = Number(it.qty ?? 1) + 1; await saveItem(it);
+    if (F) for (const p of F.added) await delPhoto(p);
+    F = null; lsSet(DRAFT, null); SUG = { state: '' };
+    toast(`${it.name}: jetzt ${it.qty} Stück`);
+    location.replace('#/item/' + it.id);
+  },
+  photoSearch: () => openCam({ search: true }),
+  psGallery: () => { camTarget = { search: true }; $('#filePick').click(); },
+  psRetry: () => { if (PS.blob) runPhotoSearch(PS.blob); },
+  psAdd: () => addFromSearch(),
+  psView: () => { if (PS.url) { const vw = $('#viewer'); $('.vw-track', vw).innerHTML = `<div class="vw-slide"><img src="${PS.url}" alt="" draggable="false"></div>`; $('.vw-count', vw).hidden = true; vw.hidden = false; viewerOpen = true; history.pushState({ viewer: 1 }, ''); } },
+  psGuess: el => { SQ.q = el.dataset.n; SQ.filter = 'all'; SQ.room = ''; location.hash = '#/search?q=' + encodeURIComponent(el.dataset.n); },
   suggNow: () => { const p = F?.photos[0]; if (p) maybeSuggest(p, true); },
   toggleRecog: () => { lsSet('lager.recog', recogOn() ? '0' : null); rerender(); },
   fDelPhoto: el => { const p = el.dataset.p; F.photos = F.photos.filter(x => x !== p); F.docs = F.docs.filter(x => x !== p); if (F.added.includes(p)) { F.added = F.added.filter(x => x !== p); delPhoto(p); } else F.removed.push(p); saveDraft(); drawPhotos(); drawDocs(); },
@@ -1516,11 +1716,13 @@ const actions = {
 
   theme: el => { const t = el.dataset.t; lsSet('lager.theme', t === 'system' ? null : t); if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; setThemeColor(); rerender(); },
   exportBackup: () => exportBackup(),
+  shareBackup: () => shareBackup(),
   importBackup: () => $('#fileBackup').click(),
   wipe: async () => {
     const ok = await ask('Wirklich alles löschen?', 'Alle Räume, Dinge und Fotos auf diesem Gerät werden gelöscht. Das lässt sich nicht rückgängig machen – mach vorher ein Backup.', 'Alles löschen', true);
     if (!ok) return; await closeSheet();
-    for (const s of ['rooms', 'items', 'photos']) await DB.clear(s);
+    for (const s of ['rooms', 'items', 'photos', 'vecs']) await DB.clear(s);
+  VEC = null;
     S.rooms = []; S.items = []; urlCache.clear(); location.hash = '#/'; rerender(); toast('Alles gelöscht');
   },
   installApp: async () => {
@@ -1576,6 +1778,7 @@ async function cleanupPhotos() {
   const used = new Set(S.items.flatMap(photoIdsOf));
   try { const d = JSON.parse(lsGet(DRAFT) || 'null'); [...(d?.photos || []), ...(d?.docs || [])].forEach(p => used.add(p)); } catch {}
   for (const id of await DB.keys('photos')) if (!used.has(id)) await DB.del('photos', id);
+  for (const id of await DB.keys('vecs')) if (!used.has(id)) { await DB.del('vecs', id); VEC?.delete(id); }
 }
 
 /* ---------------- Start ---------------- */

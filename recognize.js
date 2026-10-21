@@ -35,8 +35,9 @@ async function runInline(type, crops, onProgress) {
   const en = await inline;
   const meta = { dtype: en.dtype, loadMs: en.loadMs, errors: en.errors, terms: en.vocab.items.length };
   if (type === 'warm') return { meta, via: 'inline' };
-  onProgress?.({ step: 'run', msg: 'Erkenne …' });
-  return { ...(await mod.classify(en, crops)), meta, via: 'inline' };
+  if (type !== 'embed') onProgress?.({ step: 'run', msg: 'Erkenne …' });
+  const want = type === 'embed' ? { list: false, vecs: true } : type === 'query' ? { vecs: true } : {};
+  return { ...(await mod.classify(en, crops, type === 'query' ? 5 : 3, want)), meta, via: 'inline' };
 }
 
 function call(type, crops, onProgress) {
@@ -51,11 +52,11 @@ function call(type, crops, onProgress) {
   });
 }
 
-async function cropsOf(blob) {
+async function cropsOf(blob, single = false) {
   const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(blob));
   const w = bmp.width, h = bmp.height, m = Math.min(w, h);
   // ganzes Bild (quadratisch, Mitte) und ein engerer Ausschnitt – das Ding liegt meist in der Mitte
-  const boxes = [[(w - m) / 2, (h - m) / 2, m], [(w - m * .62) / 2, (h - m * .62) / 2, m * .62]];
+  const boxes = [[(w - m) / 2, (h - m) / 2, m], [(w - m * .62) / 2, (h - m * .62) / 2, m * .62]].slice(0, single ? 1 : 2);
   const c = document.createElement('canvas'); c.width = c.height = SIZE;
   const ctx = c.getContext('2d', { willReadFrequently: true });
   const out = boxes.map(([sx, sy, s]) => { ctx.drawImage(bmp, sx, sy, s, s, 0, 0, SIZE, SIZE); return { data: ctx.getImageData(0, 0, SIZE, SIZE).data, w: SIZE, h: SIZE }; });
@@ -65,6 +66,17 @@ async function cropsOf(blob) {
 
 /** Modell im Hintergrund laden (ohne Foto). */
 export const warmUp = onProgress => call('warm', [], onProgress);
+
+/** Bild-Fingerabdruck eines (quadratischen) Vorschaubilds: Float32Array, normiert */
+export async function embed(blob, onProgress) {
+  const res = await call('embed', await cropsOf(blob, true), onProgress);
+  return res.vecs[0];
+}
+
+/** Suchfoto: Fingerabdrücke (ganzes Bild + Mitte) und Namensvorschläge */
+export async function query(blob, onProgress) {
+  return call('query', await cropsOf(blob), onProgress);
+}
 
 /** Vorschläge für ein Foto (Blob): { list: [{ name, cat, p }], ms, meta, via } */
 export async function suggest(blob, onProgress) {

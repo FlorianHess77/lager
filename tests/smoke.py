@@ -1,5 +1,5 @@
 """Durchklick-Test am Handyformat mit Screenshots (python3 tests/smoke.py)."""
-import asyncio, os, sys, threading, http.server, socketserver, functools
+import asyncio, json, os, sys, threading, http.server, socketserver, functools
 from playwright.async_api import async_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.environ.get('SHOTS', os.path.join(ROOT, 'tests', '_shots')); os.makedirs(OUT, exist_ok=True)
@@ -16,7 +16,7 @@ def check(cond, msg):
 async def run(theme):
     async with async_playwright() as p:
         b = await p.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'])
-        ctx = await b.new_context(permissions=['camera'], viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, is_mobile=True,
+        ctx = await b.new_context(permissions=['camera'], viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, is_mobile=True, accept_downloads=True,
                                   locale='de-AT', color_scheme=theme)
         pg = await ctx.new_page()
         pg.on('pageerror', lambda e: errors.append(f'{theme}: JS-Fehler {e}'))
@@ -144,6 +144,27 @@ async def run(theme):
             check(await pg.input_value('#fName') != '' and await pg.input_value('#fTags') != '', f'{theme}: Vorschlag füllt Name und Schlagwort')
         await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(200); await pg.click('.annex'); await pg.wait_for_timeout(300)
+        # Suche per Foto: verändertes Foto vom Akkuschrauber findet ihn zuerst
+        await pg.goto(BASE + '#/'); await pg.wait_for_timeout(150); await pg.click('.nav-add'); await pg.wait_for_timeout(200)
+        await pg.fill('#fName', 'Dreieck-Schild'); await pg.evaluate("camTarget=null")
+        await pg.set_input_files('#filePick', os.path.join(ROOT, 'tests', 'sample2.jpg')); await pg.wait_for_timeout(600)
+        await pg.click('button[type=submit]'); await pg.wait_for_timeout(300)
+        await pg.goto(BASE + '#/search'); await pg.wait_for_timeout(200)
+        await pg.evaluate("camTarget={search:true}")
+        await pg.set_input_files('#filePick', os.path.join(ROOT, 'tests', 'sample-alt.jpg'))
+        await pg.wait_for_function("PS.state==='done'||PS.state==='error'", timeout=120000)
+        top = await pg.evaluate("PS.results.map(r=>r.it.name)")
+        check(await pg.evaluate("PS.state") == 'done' and top and top[0] == 'Akkuschrauber Bosch' and 'Dreieck-Schild' not in top[:1], f'{theme}: Suche per Foto findet das ähnliche Ding zuerst {top[:3]}')
+        await pg.wait_for_timeout(300); await shot('18-photosearch')
+        await pg.click('[data-a="psAdd"]'); await pg.wait_for_timeout(600)
+        check('#/edit/new' in pg.url and await pg.locator('#fPhotos .pt').count() == 1, f'{theme}: aus Suchfoto einräumen übernimmt das Foto')
+        check(await pg.locator('#fSugg .chip.own').count() >= 1 and await pg.locator('[data-a="dupPlus"]').count() == 1, f'{theme}: eigenes ähnliches Ding wird vorgeschlagen (Menge +1)')
+        await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
+        # Backup über das Teilen-Menü (hier ohne Teilen → Datei)
+        await pg.goto(BASE + '#/more'); await pg.wait_for_function("document.querySelector('#bkState')?.textContent.includes('MB')", timeout=60000)
+        async with pg.expect_download() as dl: await pg.click('[data-a="shareBackup"]')
+        bk = json.load(open(await (await dl.value).path()))
+        check(bk['app'] == 'lager' and len(bk['items']) == await pg.evaluate("S.items.length"), f'{theme}: Backup über „Auf Google Drive sichern“ (Rückfall Datei)')
         # Kamera mehrmals hintereinander benutzen
         await pg.goto(BASE + '#/'); await pg.wait_for_timeout(150); await pg.click('.nav-add'); await pg.wait_for_timeout(200)
         await pg.fill('#fName', 'Kameratest')

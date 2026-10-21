@@ -579,6 +579,32 @@ body.no-nav .toast { bottom: calc(90px + var(--safe-b)); }
 .switch.on { background: var(--ok); border-color: var(--ok); }
 .switch.on::after { transform: translateX(18px); }
 .gi.chk { cursor: pointer; }
+/* Suche per Foto */
+.sugg .chip.own { border-style: dashed; border-color: var(--ok); background: color-mix(in oklab, var(--ok) 12%, var(--card)); }
+.dup { flex-basis: 100%; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1.5px solid var(--ok); border-radius: 14px; padding: 8px 10px; margin-bottom: 4px; font-size: .9rem; }
+.dup .th { width: 44px; height: 44px; border-radius: 10px; }
+.dup .grow { flex: 1; min-width: 0; }
+.btn.sm { min-height: 38px; padding: 6px 12px; font-size: .88rem; border-width: 1.5px; }
+.ps-head { display: flex; gap: 14px; align-items: stretch; margin-bottom: 16px; }
+.ps-img { flex: none; width: 128px; height: 128px; border-radius: 18px; overflow: hidden; border: 0; padding: 0; background: var(--paper-2); box-shadow: var(--shadow); cursor: zoom-in; }
+.ps-img img { width: 100%; height: 100%; object-fit: cover; }
+.ps-side { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.ps-guess { display: flex; flex-direction: column; gap: 6px; }
+.ps-guess .chips { gap: 6px; }
+.ps-guess .chip { padding: 6px 11px; font-size: .88rem; }
+.ps-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.ps-btns .btn { min-height: 40px; padding: 8px 12px; font-size: .9rem; }
+.ps-wait { display: flex; align-items: center; gap: 12px; padding: 22px 6px; color: var(--ink-2); font-weight: 700; }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--ink); animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ps-add { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding: 12px 14px; border: 2px dashed var(--line); border-radius: 16px; color: var(--ink-2); font-weight: 700; }
+.ps-add .btn { min-height: 42px; padding: 8px 14px; }
+.it-main small .sim { font-weight: 700; color: var(--ink-2); }
+.it-main small .sim.hi { color: var(--ok); }
+.note-box.err { border-color: var(--danger); color: var(--danger); }
+.tape .tbtn + .tbtn { margin-left: -4px; }
+.group .gi.hi { background: color-mix(in oklab, var(--tape) 22%, var(--card)); }
+.bk-state { flex: none; font-size: .78rem; color: var(--ink-3); }
 .gi.chk input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; margin: 0; }
 .prev-h { font-size: 1.1rem; margin: 22px 2px 10px; }
 

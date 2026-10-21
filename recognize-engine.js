@@ -68,30 +68,44 @@ export async function createEngine(report = () => {}) {
   return { T, processor, model, emb, vocab, dtype, errors, loadMs: Date.now() - t0 };
 }
 
-/**
- * crops: [{ data: Uint8ClampedArray (RGBA), w, h }] – Bildausschnitte, die Seite schneidet sie zu.
- * Liefert { list: [{ name, cat, p }], ms }.
- */
-export async function classify(engine, crops, k = 3) {
-  const t0 = Date.now();
-  const { T, processor, model, emb, vocab } = engine;
+async function embedOne(engine, c) {
+  const { T, processor, model } = engine;
+  const img = new T.RawImage(new Uint8ClampedArray(c.data), c.w, c.h, 4);
+  const { image_embeds } = await model(await processor(img));
+  const v = Float32Array.from(image_embeds.normalize().data);
+  image_embeds.dispose?.();
+  return v;
+}
+
+function rank(engine, vecs, k = 3) {
+  const { emb, vocab } = engine;
   const items = vocab.items, D = vocab.dim, scale = vocab.scale || 100;
   const acc = new Float32Array(items.length);
-  for (const c of crops) {
-    const img = new T.RawImage(new Uint8ClampedArray(c.data), c.w, c.h, 4);
-    const { image_embeds } = await model(await processor(img));
-    const v = image_embeds.normalize().data;
+  for (const v of vecs) {
     const logits = new Float32Array(items.length); let max = -Infinity;
     for (let i = 0; i < items.length; i++) { let d = 0; const o = i * D; for (let j = 0; j < D; j++) d += emb[o + j] * v[j]; logits[i] = d * scale; if (logits[i] > max) max = logits[i]; }
     let sum = 0; for (let i = 0; i < logits.length; i++) { logits[i] = Math.exp(logits[i] - max); sum += logits[i]; }
-    for (let i = 0; i < logits.length; i++) acc[i] += logits[i] / sum / crops.length;
-    image_embeds.dispose?.();
+    for (let i = 0; i < logits.length; i++) acc[i] += logits[i] / sum / vecs.length;
   }
   // gleiche Namen (mehrere Beschreibungen) zusammenzählen
   const by = new Map();
   items.forEach((it, i) => { const x = by.get(it.name) || { name: it.name, cat: it.cat, p: 0 }; x.p += acc[i]; by.set(it.name, x); });
   const all = [...by.values()].sort((a, b) => b.p - a.p);
-  const list = all.filter((x, i) => i === 0 || x.p >= Math.max(0.03, all[0].p * 0.12)).slice(0, k)
+  return all.filter((x, i) => i === 0 || x.p >= Math.max(0.03, all[0].p * 0.12)).slice(0, k)
     .map(x => ({ ...x, p: Math.round(x.p * 1000) / 1000 }));
-  return { list, ms: Date.now() - t0 };
+}
+
+/**
+ * crops: [{ data: Uint8ClampedArray (RGBA), w, h }] – Bildausschnitte, die Seite schneidet sie zu.
+ * Liefert { list: [{ name, cat, p }], ms } und mit want.vecs zusätzlich die Bild-Fingerabdrücke.
+ */
+export async function classify(engine, crops, k = 3, want = {}) {
+  const t0 = Date.now();
+  const vecs = [];
+  for (const c of crops) vecs.push(await embedOne(engine, c));
+  const out = { ms: Date.now() - t0 };
+  if (want.list !== false) out.list = rank(engine, vecs, k);
+  if (want.vecs) out.vecs = vecs;
+  out.ms = Date.now() - t0;
+  return out;
 }

@@ -21,7 +21,9 @@ In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Sta
 - Mehrere Dinge auf einmal einräumen („3x Schrauben“, eine Zeile pro Ding)
 - Inventarliste mit Fotos und Gesamtwert als PDF (z. B. für die Hausratversicherung)
 - Fotoerkennung schlägt beim Fotografieren einen Namen vor – läuft am Handy (MobileCLIP), Wortschatz in `tools/clip-vocab.mjs`
-- Backup als Datei speichern und wieder laden (Daten bleiben sonst nur am Gerät)
+- Suche per Foto: zeigt, was im Lager ähnlich aussieht (vergleicht mit allen Fotos deiner Dinge) – nicht dabei? direkt einräumen
+- Die Fotoerkennung lernt mit: Sieht ein neues Foto aus wie eins deiner Dinge, wird dessen Name vorgeschlagen bzw. „Menge +1“ angeboten
+- Backup auf Google Drive (über das Teilen-Menü, wie in der Garagen-App) oder als Datei; Laden liest beides
 - Hell, Dunkel oder automatisch
 
 ## Technik
