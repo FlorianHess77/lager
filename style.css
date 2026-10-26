@@ -220,6 +220,19 @@ h1, h2, h3 { font-family: var(--display); margin: 0; letter-spacing: -.01em; }
 }
 .qty::before { content: ""; position: absolute; left: 9px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--card); }
 .qty.low { background: var(--danger); color: #fff; }
+.qty.zero { background: transparent; color: var(--ink-3); box-shadow: inset 0 0 0 1.5px var(--line); }
+/* Schnellentnahme */
+.itw { position: relative; }
+.itw > .it { padding-right: 62px; }
+.take {
+  position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 13px;
+  border: 1.5px solid var(--line); background: var(--paper); color: var(--ink);
+  font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: 1;
+  display: grid; place-items: center; padding: 0 0 3px;
+}
+.take:active { background: var(--tape); border-color: var(--tape-ink); transform: translateY(-50%) scale(.94); }
+.take:disabled { opacity: .3; }
 
 /* ---------- Raumansicht ---------- */
 .hero {

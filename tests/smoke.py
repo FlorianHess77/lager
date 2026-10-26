@@ -51,6 +51,17 @@ async def run(theme):
         await pg.click('.kc:has-text("Keller")'); await pg.wait_for_timeout(300)
         await shot('04-room')
         check(await pg.locator('.shelf').count() == 2, f'{theme}: Keller hat 2 Plätze')
+        # Schnellentnahme mit dem Minus-Knopf
+        row = pg.locator('.itw:has-text("Weihnachtsdeko")')
+        await row.locator('.take').click(); await pg.wait_for_timeout(250)
+        check(await row.locator('.qty').inner_text() == '2' and await pg.evaluate("S.items.find(i=>i.name==='Weihnachtsdeko').qty") == 2 and '#/room/' in pg.url, f'{theme}: Minus entnimmt 1 und bleibt in der Liste')
+        await shot('04b-take')
+        await pg.click('#toast button'); await pg.wait_for_timeout(250)
+        check(await row.locator('.qty').inner_text() == '3', f'{theme}: Rückgängig nach Entnahme')
+        akku = pg.locator('.itw:has-text("Akkuschrauber")')
+        await akku.locator('.take').click(); await pg.wait_for_timeout(250)
+        check(await akku.locator('.take').is_disabled() and 'aufgebraucht' in await pg.inner_text('#toast'), f'{theme}: bei 0 aufgebraucht, Minus gesperrt')
+        await pg.click('#toast button'); await pg.wait_for_timeout(250)
         await pg.click('.it:has-text("Akkuschrauber")'); await pg.wait_for_timeout(400)
         await shot('05-item')
         # Foto im Vollbild

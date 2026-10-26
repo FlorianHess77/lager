@@ -3,7 +3,7 @@
    Lager – Räume, Plätze und alles, was darin liegt.
    Läuft komplett im Browser, Daten bleiben in IndexedDB auf dem Gerät.
    ===================================================================== */
-const APP_VER = 'lager-1.4.0';
+const APP_VER = 'lager-1.5.0';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -259,7 +259,20 @@ function itemRow(it, opt = {}) {
     : opt.inRoom ? `<span class="t">${esc(it.note ? it.note.split('\n')[0] : (it.tags || []).join(', ') || '')}</span>`
       : `<span class="sw" style="--c:${r?.color || '#C9CFD8'}"></span><span class="t">${esc(where(it))}</span>`;
   const qty = Number(it.qty ?? 1);
-  return `<li><a class="it" href="#/item/${it.id}">${thumb(it)}<span class="it-main"><b>${opt.q ? highlight(it.name, opt.q) : esc(it.name)}</b><small>${sub}</small></span>${qty !== 1 || isLow(it) ? `<span class="qty${isLow(it) ? ' low' : ''}">${qty}</span>` : ''}</a></li>`;
+  return `<li class="itw" data-id="${it.id}"><a class="it" href="#/item/${it.id}">${thumb(it)}<span class="it-main"><b>${opt.q ? highlight(it.name, opt.q) : esc(it.name)}</b><small>${sub}</small></span>${qtyBadge(it)}</a>`
+    + `<button class="take" data-a="take" data-id="${it.id}" aria-label="1 Stück ${esc(it.name)} entnehmen"${qty <= 0 ? ' disabled' : ''}>−</button></li>`;
+}
+function qtyBadge(it) {
+  const qty = Number(it.qty ?? 1);
+  return `<span class="qty${isLow(it) ? ' low' : qty <= 0 ? ' zero' : ''}" aria-label="${qty} Stück">${qty}</span>`;
+}
+/* Schnellentnahme: Menge in allen sichtbaren Zeilen dieses Dings aktualisieren, ohne die Seite neu aufzubauen */
+function refreshRows(it) {
+  if ((parseHash().parts[0] || '') === 'lists') { rerender(); return; }
+  for (const li of $$(`.itw[data-id="${it.id}"]`)) {
+    li.querySelector('.qty')?.replaceWith(Object.assign(document.createElement('template'), { innerHTML: qtyBadge(it) }).content);
+    const b = li.querySelector('.take'); if (b) b.disabled = Number(it.qty) <= 0;
+  }
 }
 function emptyBox(title, text, btn = '') {
   return `<div class="empty"><svg viewBox="0 0 120 90" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M14 30 60 12l46 18v44L60 86 14 74z" opacity=".35"/><path d="M14 30l46 18 46-18 M60 48v38" opacity=".35"/><path d="M36 21l46 18" stroke-dasharray="4 5" opacity=".35"/></svg><h2>${title}</h2><p>${text}</p>${btn}</div>`;
@@ -1655,6 +1668,14 @@ const actions = {
   camGallery: async () => { await closeCam(); $('#filePick').click(); },
   camType: async () => { await closeCam(); manualCode(); },
 
+  take: async el => {
+    const it = itemById(el.dataset.id); if (!it) return;
+    const before = Number(it.qty ?? 1); if (before <= 0) return;
+    it.qty = before - 1; await saveItem(it); refreshRows(it);
+    navigator.vibrate?.(15);
+    const msg = it.qty === 0 ? `${it.name} ist aufgebraucht` : isLow(it) ? `${it.name}: noch ${it.qty} – wird knapp` : `${it.name}: noch ${it.qty}`;
+    toast(msg, 'Rückgängig', async () => { const x = itemById(it.id); if (!x) return; x.qty = before; await saveItem(x); refreshRows(x); }, 5000);
+  },
   qty: async el => {
     const it = itemById(el.dataset.id); it.qty = Math.max(0, Number(it.qty ?? 1) + Number(el.dataset.d));
     await saveItem(it); rerender();

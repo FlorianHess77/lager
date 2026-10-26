@@ -14,6 +14,7 @@ In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Sta
 - Suche über Name, Schlagworte, Platz, Raum und Notiz – mit Spracheingabe
 - Meldemenge: Dinge, die knapp werden, landen auf einem teilbaren Einkaufszettel
 - Verleihen: merkt sich, wer was hat und seit wann
+- Schnellentnahme: Minus-Knopf an jedem Ding (mit Rückgängig)
 - Umräumen, Kopie anlegen, Inhaltsliste eines Raums teilen
 - Haltbarkeit (Liste „Läuft ab“), Kaufdatum, Preis, Garantie mit Foto der Rechnung (Liste „Garantie“)
 - QR-Aufkleber für Kisten, Laden und Regale drucken – Scannen zeigt sofort den Inhalt
