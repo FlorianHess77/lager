@@ -1,13 +1,13 @@
 // Holt die beiden Schriften (Fontsource, OFL-Lizenz) und legt sie unter fonts/ ab,
 // damit die App ohne Google Fonts startet – auch ohne Internet.
 // Läuft auf GitHub (.github/workflows/schriften.yml): node tools/fetch-fonts.mjs <Ordner mit node_modules>
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const NM = join(process.argv[2], 'node_modules');
 const SUBSETS = /-(latin|latin-ext)-/; // Deutsch braucht nur Latin (+ Ext für Sonderfälle)
 const SRC = [
-  { pkg: '@fontsource-variable/bricolage-grotesque', css: ['full.css', 'index.css'], family: 'Bricolage Grotesque' },
+  { pkg: '@fontsource-variable/bricolage-grotesque', css: 'auto', family: 'Bricolage Grotesque' },
   { pkg: '@fontsource/atkinson-hyperlegible', css: ['400.css', '700.css', '400-italic.css'], family: 'Atkinson Hyperlegible' },
 ];
 rmSync('fonts', { recursive: true, force: true });
@@ -16,7 +16,15 @@ let out = '/* Selbst gehostete Schriften (SIL Open Font License) – erzeugt von
 const files = new Set();
 for (const s of SRC) {
   let used = null;
-  for (const c of s.css) {
+  let list = s.css;
+  if (list === 'auto') {
+    // die CSS-Datei mit den meisten Achsen nehmen (Breite für die schmalen Überschriften)
+    const all = readdirSync(join(NM, s.pkg)).filter(f => f.endsWith('.css'));
+    const score = f => { const t = readFileSync(join(NM, s.pkg, f), 'utf8'); return (t.includes('font-stretch') ? 4 : 0) + (f === 'full.css' ? 2 : 0) + (f === 'index.css' ? 1 : 0); };
+    list = all.sort((a, b) => score(b) - score(a));
+    console.log('CSS-Dateien:', list.join(', '));
+  }
+  for (const c of list) {
     let css; try { css = readFileSync(join(NM, s.pkg, c), 'utf8'); } catch { continue; }
     const blocks = css.match(/(\/\*[^*]*\*\/\s*)?@font-face\s*{[^}]*}/g) || [];
     const keep = blocks.filter(b => SUBSETS.test(b));
@@ -28,7 +36,7 @@ for (const s of SRC) {
       out += b.trim() + '\n';
     }
     used = c;
-    if (c === 'full.css') break; // volle Achsen (Breite, optische Größe) reichen
+    break; // die beste Datei reicht
   }
   if (!used) throw new Error(`Keine passenden Schriftschnitte in ${s.pkg}`);
   copyFileSync(join(NM, s.pkg, 'LICENSE'), join('fonts', `LICENSE-${s.family.replace(/\s+/g, '-')}.txt`));
