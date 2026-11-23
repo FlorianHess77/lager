@@ -1,0 +1,38 @@
+name: Schriften holen
+
+# Lädt die beiden Schriften der App (Fontsource) nach fonts/, damit die App
+# ohne Google Fonts startet und offline genauso aussieht.
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/fetch-fonts.mjs
+      - .github/workflows/schriften.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fonts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Schriften holen
+        run: |
+          mkdir -p /tmp/f && echo '{"private":true}' > /tmp/f/package.json
+          npm install --no-audit --no-fund --prefix /tmp/f @fontsource-variable/bricolage-grotesque@5 @fontsource/atkinson-hyperlegible@5
+          node tools/fetch-fonts.mjs /tmp/f
+          ls -la fonts
+      - name: Ins Repo legen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
+          git add -A fonts
+          if git diff --cached --quiet; then echo "Nichts geändert"; exit 0; fi
+          git commit -m "Schriften selbst gehostet"
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep 5; done
+          exit 1
