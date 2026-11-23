@@ -167,7 +167,10 @@ async def run(theme):
         top = await pg.evaluate("PS.results.map(r=>r.it.name)")
         check(await pg.evaluate("PS.state") == 'done' and top and top[0] == 'Akkuschrauber Bosch' and 'Dreieck-Schild' not in top[:1], f'{theme}: Suche per Foto findet das ähnliche Ding zuerst {top[:3]}')
         await pg.wait_for_timeout(300); await shot('18-photosearch')
-        await pg.click('[data-a="psAdd"]'); await pg.wait_for_timeout(600)
+        await pg.click('[data-a="psAdd"]')
+        try: await pg.wait_for_function("location.hash.startsWith('#/edit/new')", timeout=8000)
+        except Exception: pass
+        await pg.wait_for_timeout(400)
         check('#/edit/new' in pg.url and await pg.locator('#fPhotos .pt').count() == 1, f'{theme}: aus Suchfoto einräumen übernimmt das Foto')
         check(await pg.locator('#fSugg .chip.own').count() >= 1 and await pg.locator('[data-a="dupPlus"]').count() == 1, f'{theme}: eigenes ähnliches Ding wird vorgeschlagen (Menge +1)')
         await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(200)
@@ -202,6 +205,11 @@ async def run(theme):
         check(await pg.input_value('#fName') == 'Halbfertig', f'{theme}: Entwurf nach Neuladen noch da')
         await pg.click('[data-a="cancelEdit"]'); await pg.wait_for_timeout(300)
         check(await pg.evaluate("localStorage.getItem('lager.draft')") is None, f'{theme}: Abbrechen verwirft Entwurf')
+        # Offline-Start: App ohne Netz öffnen
+        await pg.evaluate("navigator.serviceWorker.ready"); await pg.reload(); await pg.wait_for_timeout(800)
+        await ctx.set_offline(True); await pg.reload(); await pg.wait_for_timeout(800)
+        check(await pg.locator('.kc').count() == 6, f'{theme}: Offline-Start zeigt die Räume')
+        await ctx.set_offline(False)
         await b.close()
 
 asyncio.run(run(sys.argv[1] if len(sys.argv) > 1 else 'light'))

@@ -5,7 +5,7 @@ Jeder Raum eine Karteikarte: Räume anlegen (Keller, Küche, Werkstatt …), dar
 **App:** https://florianhess77.github.io/lager/
 
 ## Installieren
-In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Startbildschirm ohne Browserleiste und funktioniert offline.
+In Chrome öffnen → ⋮ → **App installieren**. Danach startet Lager vom Startbildschirm ohne Browserleiste und funktioniert offline – auch bei hängendem Netz (WLAN ohne Internet) nach spätestens 2,5 s. Schriften sind selbst gehostet (`fonts/`, über `.github/workflows/schriften.yml`).
 
 ## Funktionen
 - Startseite als Karteikasten: jeder Raum eine Karte mit Reiter und Vorschau der letzten Dinge (Farbe, Symbol und Reihenfolge frei wählbar)
